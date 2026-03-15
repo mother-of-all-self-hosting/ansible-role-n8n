@@ -1,106 +1,134 @@
 # SPDX-FileCopyrightText: 2023 Alejandro AR
+# SPDX-FileCopyrightText: 2023, 2024 Nikita Chernyi
+# SPDX-FileCopyrightText: 2023-2025 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2024 Julian-Samuel Gebühr
+# SPDX-FileCopyrightText: 2024 Sergio Durigan Junior
+# SPDX-FileCopyrightText: 2025 MASH project contributors
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-# Project source code URL: https://github.com/n8n-io/n8n
+# Project source code URL: https://github.com/getfider/fider
 
-# Enable or disable n8n deployment
-n8n_enabled: true
+fider_enabled: true
 
-# Identifier string for n8n resources (e.g. container names, network names)
-n8n_identifier: n8n
+fider_identifier: fider
+fider_base_path: "/{{ fider_identifier }}"
 
-# User ID and Group ID for running n8n service in the container
+# renovate: datasource=docker depName=getfider/fider
+fider_version: v0.33.0
+
+fider_uid: ""
+fider_gid: ""
+
+# The scheme used for serving Fider.
+fider_scheme: https
+
+# The hostname at which Fider is served.
+fider_hostname: ""
+
+# The path at which Fider is served.
+# This value must either be `/` or not end with a slash (e.g. `/fider`).
 #
-# Important note: The n8n Docker image uses UID and GID 1000 for the user node internally.
-# This cannot be remapped as it executes chown and setgroups commands.
-# If you have knowledge on how this value can be remapped, please let me know or send a PR.
-n8n_uid: "1000"
-n8n_gid: "1000"
+# Hosting Fider under a subpath does not seem to be possible due to Fider's
+# technical limitations.
+fider_path_prefix: /
 
-# The scheme used for serving n8n (http or https)
-n8n_scheme: https
+fider_container_image: "{{ fider_container_image_registry_prefix }}getfider/fider:{{ fider_container_image_tag }}"
+fider_container_image_tag: "{{ fider_version }}"
+fider_container_image_registry_prefix: "{{ fider_container_image_registry_prefix_upstream }}"
+fider_container_image_registry_prefix_upstream: "{{ fider_container_image_registry_prefix_upstream_default }}"
+fider_container_image_registry_prefix_upstream_default: docker.io/
+fider_container_image_force_pull: "{{ fider_container_image.endswith(':latest') }}"
 
-# The hostname at which n8n is served
-n8n_hostname: ""
-
-# The path at which n8n is served, must either be `/` or not end with a slash (e.g. `/n8n`)
-n8n_path_prefix: /
-
-# Version of n8n to deploy
-n8n_version: next
-
-# Base path for n8n resources
-n8n_base_path: "{{ n8n_identifier }}"
-n8n_data_path: "{{ n8n_base_path }}/data"
-n8n_config_path: "{{ n8n_data_path }}/.n8n"
-
-# Enable or disable metrics collection for n8n
-n8n_metrics_enabled: false
-
-# Enable or disable isolation mode for n8n
-n8n_isolation_enabled: true
-
-# Timezone configuration for n8n
-n8n_timezone: UTC
-
-n8n_container_image: "{{ n8n_container_image_registry_prefix }}/n8nio/n8n:{{ n8n_container_image_tag }}"
-n8n_container_image_registry_prefix: docker.n8n.io
-n8n_container_image_tag: "{{ n8n_version }}"
-n8n_container_image_force_pull: "{{ n8n_container_image.endswith(':latest') }}"
+fider_container_image_self_build: false
+fider_container_image_self_build_name: "getfider/fider:{{ fider_container_image_self_build_repo_version }}"
+fider_container_image_self_build_repo: "https://github.com/getfider/fider.git"
+fider_container_image_self_build_repo_version: "{{ fider_version if fider_version != 'latest' else 'main' }}"
+fider_container_image_self_build_src_files_path: "{{ fider_base_path }}/docker-src"
 
 # The base container network. It will be auto-created by this role if it doesn't exist already.
-n8n_container_network: "{{ n8n_identifier }}"
+fider_container_network: "{{ fider_identifier }}"
+
+# Control if the container network is deleted on uninstalling.
+fider_container_network_deletion_enabled: true
+
+# Specify how the container publishes its HTTP port (as defined by `fider_container_http_port`).
+#
+# Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:2586"), or empty string to not expose.
+fider_container_http_host_bind_port: ""
+
+# The port number in the container
+fider_container_http_port: 3000
 
 # A list of additional container networks that the container would be connected to.
 # The role does not create these networks, so make sure they already exist.
 # Use this to expose this container to another reverse proxy, which runs in a different container network.
-n8n_container_additional_networks: []
+fider_container_additional_networks: "{{ fider_container_additional_networks_auto + fider_container_additional_networks_custom }}"
+fider_container_additional_networks_auto: []
+fider_container_additional_networks_custom: []
 
-# n8n_container_labels_traefik_enabled controls whether labels to assist a Traefik reverse-proxy will be attached to the container.
+# A list of additional "volumes" to mount in the container.
+# This list gets populated dynamically at runtime. You can provide a different default value,
+# if you wish to mount your own files into the container.
+# Contains definition objects like this: `{"type": "bind", "src": "/outside", "dst": "/inside", "options": "readonly"}.
+# See the `--mount` documentation for the `docker run` command.
+fider_container_additional_volumes: "{{ fider_container_additional_volumes_auto + fider_container_additional_volumes_custom }}"
+fider_container_additional_volumes_auto: []
+fider_container_additional_volumes_custom: []
+
+# fider_container_labels_traefik_enabled controls whether labels to assist a Traefik reverse-proxy will be attached to the container.
 # See `../templates/labels.j2` for details.
 #
-# To inject your own other container labels, see `n8n_container_labels_additional_labels`.
-n8n_container_labels_traefik_enabled: true
-n8n_container_labels_traefik_docker_network: "{{ n8n_container_network }}"
-n8n_container_labels_traefik_hostname: "{{ n8n_hostname }}"
-# The path prefix must either be `/` or not end with a slash (e.g. `/n8n`).
-n8n_container_labels_traefik_path_prefix: "{{ n8n_path_prefix }}"
-n8n_container_labels_traefik_rule: "Host(`{{ n8n_container_labels_traefik_hostname }}`){% if n8n_container_labels_traefik_path_prefix != '/' %} && PathPrefix(`{{ n8n_container_labels_traefik_path_prefix }}`){% endif %}"
-n8n_container_labels_traefik_priority: 0
-n8n_container_labels_traefik_entrypoints: web-secure
-n8n_container_labels_traefik_tls: "{{ n8n_container_labels_traefik_entrypoints != 'web' }}"
-n8n_container_labels_traefik_tls_certResolver: default # noqa var-naming
+# To inject your own other container labels, see `fider_container_labels_additional_labels_custom`.
+fider_container_labels_traefik_enabled: true
+fider_container_labels_traefik_docker_network: "{{ fider_container_network }}"
+fider_container_labels_traefik_hostname: "{{ fider_hostname }}"
+# The path prefix must either be `/` or not end with a slash (e.g. `/fider`).
+fider_container_labels_traefik_path_prefix: "{{ fider_path_prefix }}"
+fider_container_labels_traefik_rule: "Host(`{{ fider_container_labels_traefik_hostname }}`){% if fider_container_labels_traefik_path_prefix != '/' %} && PathPrefix(`{{ fider_container_labels_traefik_path_prefix }}`){% endif %}"
+fider_container_labels_traefik_priority: 0
+fider_container_labels_traefik_entrypoints: web-secure
+fider_container_labels_traefik_tls: "{{ fider_container_labels_traefik_entrypoints != 'web' }}"
+fider_container_labels_traefik_tls_certResolver: default  # noqa var-naming
+
+# Controls which additional headers to attach to all HTTP requests.
+# To add your own custom request headers, use `fider_container_labels_traefik_additional_request_headers_custom`
+fider_container_labels_traefik_additional_request_headers: "{{ fider_container_labels_traefik_additional_request_headers_auto | combine(fider_container_labels_traefik_additional_request_headers_custom) }}"
+fider_container_labels_traefik_additional_request_headers_auto: {}
+fider_container_labels_traefik_additional_request_headers_custom: {}
 
 # Controls which additional headers to attach to all HTTP responses.
-# To add your own headers, use `n8n_container_labels_traefik_additional_response_headers_custom`
-n8n_container_labels_traefik_additional_response_headers: "{{ n8n_container_labels_traefik_additional_response_headers_auto | combine(n8n_container_labels_traefik_additional_response_headers_custom) }}"
-n8n_container_labels_traefik_additional_response_headers_auto: |
+# To add your own custom response headers, use `fider_container_labels_traefik_additional_response_headers_custom`
+fider_container_labels_traefik_additional_response_headers: "{{ fider_container_labels_traefik_additional_response_headers_auto | combine(fider_container_labels_traefik_additional_response_headers_custom) }}"
+fider_container_labels_traefik_additional_response_headers_auto: |
   {{
     {}
-    | combine ({'X-XSS-Protection': n8n_http_header_xss_protection} if n8n_http_header_xss_protection else {})
-    | combine ({'X-Frame-Options': n8n_http_header_frame_options} if n8n_http_header_frame_options else {})
-    | combine ({'X-Content-Type-Options': n8n_http_header_content_type_options} if n8n_http_header_content_type_options else {})
-    | combine ({'Content-Security-Policy': n8n_http_header_content_security_policy} if n8n_http_header_content_security_policy else {})
-    | combine ({'Permission-Policy': n8n_http_header_content_permission_policy} if n8n_http_header_content_permission_policy else {})
-    | combine ({'Strict-Transport-Security': n8n_http_header_strict_transport_security} if n8n_http_header_strict_transport_security and n8n_container_labels_traefik_tls else {})
+    | combine ({'X-XSS-Protection': fider_http_header_xss_protection} if fider_http_header_xss_protection else {})
+    | combine ({'X-Content-Type-Options': fider_http_header_content_type_options} if fider_http_header_content_type_options else {})
+    | combine ({'Content-Security-Policy': fider_http_header_content_security_policy} if fider_http_header_content_security_policy else {})
+    | combine ({'Permissions-Policy': fider_http_header_permissions_policy} if fider_http_header_permissions_policy else {})
+    | combine ({'Strict-Transport-Security': fider_http_header_strict_transport_security} if fider_http_header_strict_transport_security and fider_container_labels_traefik_tls else {})
   }}
-n8n_container_labels_traefik_additional_response_headers_custom: {}
-# n8n_container_labels_additional_labels contains a multiline string with additional labels to add to the container label file.
+fider_container_labels_traefik_additional_response_headers_custom: {}
+
+# fider_container_labels_additional_labels contains a multiline string with additional labels to add to the container label file.
 # See `../templates/labels.j2` for details.
+# To add your own custom labels, use `fider_container_labels_additional_labels_custom`
 #
 # Example:
-# n8n_container_labels_additional_labels: |
-#   my.label=1
-#   another.label="here"
-n8n_container_labels_additional_labels: ""
+# fider_container_labels_additional_labels_custom:
+#   - my.label=1
+#   - another.label="here"
+fider_container_labels_additional_labels: "{{ fider_container_labels_additional_labels_auto + fider_container_labels_additional_labels_custom }}"
+fider_container_labels_additional_labels_auto: []
+fider_container_labels_additional_labels_custom: []
 
-# A list of extra arguments to pass to the container
-n8n_container_extra_arguments: []
-
-# List of systemd services that n8n.service depends on
-n8n_systemd_required_services_list: ["docker.service"]
+# A list of extra arguments to pass to the container (`docker create` command)
+fider_container_extra_arguments: "{{ fider_container_extra_arguments_auto + fider_container_extra_arguments_custom }}"
+fider_container_extra_arguments_auto: []
+fider_container_extra_arguments_custom: []
 
 # Specifies the value of the `X-XSS-Protection` header
 # Stops pages from loading when they detect reflected cross-site scripting (XSS) attacks.
@@ -108,27 +136,23 @@ n8n_systemd_required_services_list: ["docker.service"]
 # Learn more about it is here:
 # - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
 # - https://portswigger.net/web-security/cross-site-scripting/reflected
-n8n_http_header_xss_protection: "1; mode=block"
-
-# Specifies the value of the `X-Frame-Options` header which controls whether framing can happen.
-# See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
-n8n_http_header_frame_options: SAMEORIGIN
+fider_http_header_xss_protection: "1; mode=block"
 
 # Specifies the value of the `X-Content-Type-Options` header.
 # See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options
-n8n_http_header_content_type_options: nosniff
+fider_http_header_content_type_options: nosniff
 
 # Specifies the value of the `Content-Security-Policy` header.
 # See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
-n8n_http_header_content_security_policy: frame-ancestors 'self'
+fider_http_header_content_security_policy: frame-ancestors 'self'
 
-# Specifies the value of the `Permission-Policy` header.
-# See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permission-Policy
-n8n_http_header_content_permission_policy: "{{ 'interest-cohort=()' if n8n_floc_optout_enabled else '' }}"
+# Specifies the value of the `Permissions-Policy` header.
+# See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy
+fider_http_header_permissions_policy: "{{ 'interest-cohort=()' if fider_floc_optout_enabled else '' }}"
 
 # Specifies the value of the `Strict-Transport-Security` header.
 # See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
-n8n_http_header_strict_transport_security: "max-age=31536000; includeSubDomains{{ '; preload' if n8n_hsts_preload_enabled else '' }}"
+fider_http_header_strict_transport_security: "max-age=31536000; includeSubDomains{{ '; preload' if fider_hsts_preload_enabled else '' }}"
 
 # Controls whether to send a "Permissions-Policy interest-cohort=();" header along with all responses
 #
@@ -138,8 +162,8 @@ n8n_http_header_strict_transport_security: "max-age=31536000; includeSubDomains{
 # - https://amifloced.org/
 #
 # Of course, a better solution is to just stop using browsers (like Chrome), which participate in such tracking practices.
-# See: `n8n_content_permission_policy`
-n8n_floc_optout_enabled: true
+# See: `fider_http_header_permissions_policy`
+fider_floc_optout_enabled: true
 
 # Controls if HSTS preloading is enabled
 #
@@ -150,48 +174,92 @@ n8n_floc_optout_enabled: true
 # - https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security
 # - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
 # - https://hstspreload.org/#opt-in
-# See: `n8n_http_header_strict_transport_security`
-n8n_hsts_preload_enabled: false
+# See: `fider_http_header_strict_transport_security`
+fider_hsts_preload_enabled: false
 
-# PostgreSQL database configuration
-n8n_database_username: n8n
-n8n_database_password: ""
-n8n_database_hostname: ""
-n8n_database_port: 5432
-n8n_database_name: n8n
+# List of systemd services that the Fider systemd service depends on
+fider_systemd_required_services_list: "{{ fider_systemd_required_services_list_default + fider_systemd_required_services_list_auto + fider_systemd_required_services_list_custom }}"
+fider_systemd_required_services_list_default: "{{ [devture_systemd_docker_base_docker_service_name] if devture_systemd_docker_base_docker_service_name else [] }}"
+fider_systemd_required_services_list_auto: []
+fider_systemd_required_services_list_custom: []
 
-# Controls the DB_POSTGRESDB_USER environment variable
-n8n_environment_variable_database_username: "{{ n8n_database_username }}"
+# List of systemd services that the Fider systemd service wants
+fider_systemd_wanted_services_list: "{{ fider_systemd_wanted_services_list_default + fider_systemd_wanted_services_list_auto + fider_systemd_wanted_services_list_custom }}"
+fider_systemd_wanted_services_list_default: []
+fider_systemd_wanted_services_list_auto: []
+fider_systemd_wanted_services_list_custom: []
 
-# Controls the DB_POSTGRESDB_PASSWORD environment variable
-n8n_environment_variable_database_password: "{{ n8n_database_password }}"
+# Controls how long to wait for the container to stop gracefully before killing it.
+fider_container_stop_grace_time_seconds: "{{ devture_systemd_docker_base_container_stop_grace_time_seconds }}"
 
-# Controls the DB_POSTGRESDB_HOST environment variable
-n8n_environment_variable_database_hostname: "{{ n8n_database_hostname }}"
+# Controls how long the pre-start cleanup should wait for stale container-name release
+# before failing startup explicitly.
+fider_container_cleanup_timeout_seconds: "{{ devture_systemd_docker_base_container_cleanup_timeout_seconds }}"
 
-# Controls the DB_POSTGRESDB_PORT environment variable
-n8n_environment_variable_database_port: "{{ n8n_database_port }}"
+# Controls the delay between pre-start cleanup retries.
+fider_container_cleanup_retry_delay_seconds: "{{ devture_systemd_docker_base_container_cleanup_retry_delay_seconds }}"
 
-# Controls the DB_POSTGRESDB_DATABASE environment variable
-n8n_environment_variable_database_name: "{{ n8n_database_name }}"
+# Shell command used in the systemd pre-start phase to deterministically remove a stale
+# container and wait until Docker releases its name.
+fider_container_cleanup_command: |
+  i=0;
+  while [ "$i" -lt {{ fider_container_cleanup_timeout_seconds }} ]; do
+  {{ devture_systemd_docker_base_host_command_docker }} stop -t {{ fider_container_stop_grace_time_seconds }} {{ fider_identifier }} >/dev/null 2>&1 || true;
+  {{ devture_systemd_docker_base_host_command_docker }} rm -f {{ fider_identifier }} >/dev/null 2>&1 || true;
+  if {{ devture_systemd_docker_base_host_command_docker }} container inspect {{ fider_identifier }} >/dev/null 2>&1; then
+  i=$((i + 1));
+  sleep {{ fider_container_cleanup_retry_delay_seconds }};
+  continue;
+  fi;
+  if {{ devture_systemd_docker_base_host_command_docker }} info >/dev/null 2>&1; then
+  exit 0;
+  fi;
+  echo "Failed to query Docker daemon while cleaning up {{ fider_identifier }}" >&2;
+  exit 1;
+  done;
+  echo "Failed to remove stale container {{ fider_identifier }} after {{ fider_container_cleanup_timeout_seconds }} attempts" >&2;
+  exit 1
 
-# Controls the N8N_HOST environment variable
-n8n_environment_variable_n8n_host: "{{ n8n_hostname }}"
+# Specify database configuration
+fider_database_hostname: ""
+fider_database_port: 5432
+fider_database_username: fider
+fider_database_password: ""
+fider_database_name: fider
+fider_database_sslmode: disable
+fider_environment_variables_database_url: postgres://{{ fider_database_username }}:{{ fider_database_password }}@{{ fider_database_hostname }}:{{ fider_database_port }}/{{ fider_database_name }}?sslmode={{ fider_database_sslmode }}
 
-# Controls the N8N_PATH environment variable
-n8n_environment_variable_n8n_path: "{{ n8n_path_prefix }}"
+# Control if SMTP server is enabled as the email sender
+fider_email_smtp_enabled: false
 
-# Controls the BASE_URL environment variable
-n8n_environment_variable_base_url: "{{ n8n_scheme }}://{{ n8n_hostname }}{{ n8n_path_prefix }}"
+# Specify the timezone
+fider_environment_variables_tz: UTC
 
-# Controls the WEBHOOK_URL environment variable
-n8n_environment_variable_webhook_url: "{{ n8n_environment_variable_base_url }}"
+fider_environment_variables_base_url: "{{ fider_scheme }}://{{ fider_hostname }}"
 
-# Controls the GENERIC_TIMEZONE environment variable
-n8n_environment_variable_timezone: "{{ n8n_timezone }}"
+# Specify a random string used for session management
+# generated with `pwgen -s 64 1` or in another way.
+fider_environment_variables_jwt_secret: ""
 
-# Controls the N8N_METRICS environment variable
-n8n_environment_variable_metrics_enabled: "{{ n8n_metrics_enabled }}"
+# Specify the email address from which will send messages
+fider_environment_variables_email_noreply: ""
+
+# Specify SMTP server configuration
+fider_environment_variables_email_smtp_host: ""
+fider_environment_variables_email_smtp_port: ""
+fider_environment_variables_email_smtp_username: ""
+fider_environment_variables_email_smtp_password: ""
+fider_environment_variables_email_smtp_enable_starttls: false
 
 # Additional environment variables.
-n8n_environment_variables_additional_variables: ""
+fider_environment_variables_additional_variables: ""
+
+# fider_restart_necessary controls whether the Fider systemd
+# service will be restarted (when true) or merely started (when false) by the
+# systemd service manager role (when conditional restart is enabled).
+#
+# This value is automatically computed during installation based on whether
+# any configuration files, the systemd service file, or the container image changed.
+# The default of `false` means "no restart needed" — appropriate when the role's
+# installation tasks haven't run (e.g., due to --tags skipping them).
+fider_restart_necessary: false

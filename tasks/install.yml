@@ -1,49 +1,113 @@
 # SPDX-FileCopyrightText: 2023 Alejandro AR
+# SPDX-FileCopyrightText: 2023-2025 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Ensure n8n paths exist
+- name: Ensure Fider path exists
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    mode: 0750
-    owner: "{{ n8n_uid }}"
-    group: "{{ n8n_gid }}"
+    mode: "0750"
+    owner: "{{ fider_uid }}"
+    group: "{{ fider_gid }}"
   with_items:
-    - "{{ n8n_base_path }}"
-    - "{{ n8n_data_path }}"
-    - "{{ n8n_data_path }}/{{ n8n_config_path }}"
+    - "{{ fider_base_path }}"
 
-- name: Ensure n8n support files installed
+- name: Ensure Fider support files installed
   ansible.builtin.template:
     src: "{{ role_path }}/templates/{{ item }}.j2"
-    dest: "{{ n8n_base_path }}/{{ item }}"
-    mode: 0640
-    owner: "{{ n8n_uid }}"
-    group: "{{ n8n_gid }}"
+    dest: "{{ fider_base_path }}/{{ item }}"
+    mode: "0640"
+    owner: "{{ fider_uid }}"
+    group: "{{ fider_gid }}"
   with_items:
     - env
     - labels
+  register: fider_support_files_result
 
-- name: Ensure n8n container image is pulled
-  community.docker.docker_image:
-    name: "{{ n8n_container_image }}"
-    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
-    force_source: "{{ n8n_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
-    force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else n8n_container_image_force_pull }}"
-  register: result
-  retries: "{{ devture_playbook_help_container_retries_count }}"
-  delay: "{{ devture_playbook_help_container_retries_delay }}"
-  until: result is not failed
+- name: Run if self-building of Fider container image is not enabled
+  when: "not fider_container_image_self_build | bool"
+  block:
+    - name: Ensure Fider container image is pulled via community.docker.docker_image
+      when: devture_systemd_docker_base_container_image_pull_method == 'ansible-module'
+      community.docker.docker_image:
+        name: "{{ fider_container_image }}"
+        source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+        force_source: "{{ fider_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+        force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else fider_container_image_force_pull }}"
+      register: fider_container_image_pull_result
+      retries: "{{ devture_playbook_help_container_retries_count }}"
+      delay: "{{ devture_playbook_help_container_retries_delay }}"
+      until: fider_container_image_pull_result is not failed
 
-- name: Ensure n8n container network is created
-  community.general.docker_network:
-    name: "{{ n8n_container_network }}"
+    - name: Ensure Fider container image is pulled via ansible.builtin.command
+      when: devture_systemd_docker_base_container_image_pull_method == 'command'
+      ansible.builtin.command:
+        cmd: "{{ devture_systemd_docker_base_host_command_docker }} pull {{ fider_container_image }}"
+      register: fider_container_image_pull_result
+      retries: "{{ devture_playbook_help_container_retries_count }}"
+      delay: "{{ devture_playbook_help_container_retries_delay }}"
+      until: fider_container_image_pull_result is not failed
+      changed_when: "'Downloaded newer image' in fider_container_image_pull_result.stdout"
+
+- name: Run if self-building of Fider container image is enabled
+  when: "fider_container_image_self_build | bool"
+  block:
+    - name: Ensure Fider repository is present on self-build
+      ansible.builtin.git:
+        repo: "{{ fider_container_image_self_build_repo }}"
+        version: "{{ fider_container_image_self_build_repo_version }}"
+        dest: "{{ fider_container_image_self_build_src_files_path }}"
+        force: "yes"
+      register: fider_git_pull_results
+
+    - name: Ensure Fider container image is built
+      ansible.builtin.shell:
+        chdir: "{{ fider_container_image_self_build_src_files_path }}"
+        cmd: |
+          {{ devture_systemd_docker_base_host_command_docker }} build \
+          -t "{{ fider_container_image_self_build_name }}" \
+          -f Dockerfile \
+          .
+      register: fider_container_image_build_result
+      changed_when: "'Successfully built' in fider_container_image_build_result.stdout or ('writing image' in fider_container_image_build_result.stderr and 'CACHED' not in fider_container_image_build_result.stderr)"
+
+- name: Ensure Fider container network is created via community.docker.docker_network
+  when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
+  community.docker.docker_network:
+    enable_ipv6: "{{ devture_systemd_docker_base_ipv6_enabled }}"
+    name: "{{ fider_container_network }}"
     driver: bridge
+    driver_options: "{{ devture_systemd_docker_base_container_networks_driver_options }}"
+  register: fider_network_creation_result
 
-- name: Ensure n8n systemd service is present
+- name: Ensure Fider container network is created via ansible.builtin.command
+  when: devture_systemd_docker_base_container_network_creation_method == 'command'
+  ansible.builtin.command:
+    cmd: >-
+      {{ devture_systemd_docker_base_host_command_docker }} network create
+      {% if devture_systemd_docker_base_ipv6_enabled %}--ipv6{% endif %}
+      {{ devture_systemd_docker_base_container_networks_driver_options_string }}
+      {{ fider_container_network }}
+  register: fider_network_creation_result
+  changed_when: fider_network_creation_result.rc == 0
+  failed_when: fider_network_creation_result.rc != 0 and 'already exists' not in fider_network_creation_result.stderr
+
+- name: Ensure Fider systemd service is present
   ansible.builtin.template:
-    src: "{{ role_path }}/templates/systemd/n8n.service.j2"
-    dest: "{{ devture_systemd_docker_base_systemd_path }}/{{ n8n_identifier }}.service"
-    mode: 0644
+    src: "{{ role_path }}/templates/systemd/fider.service.j2"
+    dest: "{{ devture_systemd_docker_base_systemd_path }}/{{ fider_identifier }}.service"
+    mode: "0644"
+  register: fider_systemd_service_result
+
+- name: Determine whether Fider needs a restart
+  ansible.builtin.set_fact:
+    fider_restart_necessary: >-
+      {{
+        fider_support_files_result.changed | default(false)
+        or fider_systemd_service_result.changed | default(false)
+        or fider_container_image_pull_result.changed | default(false)
+        or fider_container_image_build_result.changed | default(false)
+      }}

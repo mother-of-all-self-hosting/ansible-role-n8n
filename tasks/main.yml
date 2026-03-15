@@ -1,23 +1,28 @@
 # SPDX-FileCopyrightText: 2023 Alejandro AR
+# SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- block:
-    - when: n8n_enabled | bool
-      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
-
-    - when: n8n_enabled | bool
-      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+- name: Perform Fider installation tasks
+  when: fider_enabled | bool
   tags:
     - setup-all
-    - setup-n8n
+    - setup-fider
     - install-all
-    - install-n8n
+    - install-fider
+  block:
+    - name: Validate Fider configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install Fider
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
 
-- block:
-    - when: not n8n_enabled | bool
-      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"
+- name: Perform Fider uninstallation tasks
+  when: not fider_enabled | bool
   tags:
     - setup-all
-    - setup-n8n
+    - setup-fider
+  block:
+    - name: Uninstall Fider
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"
