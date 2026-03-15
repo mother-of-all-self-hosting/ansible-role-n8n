@@ -80,51 +80,6 @@ n8n_database_name: YOUR_POSTGRES_SERVER_DATABASE_NAME_HERE
 
 Make sure to replace values for variables with yours.
 
-### Set a random string
-
-You also need to set a random secure string. To do so, add the following configuration to your `vars.yml` file. The value can be generated with `pwgen -s 64 1` or in another way.
-
-```yaml
-n8n_environment_variables_jwt_secret: YOUR_SECRET_KEY_HERE
-```
-
-### Configure the mailer
-
-It is also necessary to configure a mailer to enable email functions such as creating the first administrator user. For the mailer you can use a SMTP server, Mailgun, or Amazon SES (Simple Email Service).
-
-To specify the email address from which messages will be sent, add the following configuration to your `vars.yml` file:
-
-```yaml
-n8n_environment_variables_email_noreply: YOUR_EMAIL_ADDRESS_HERE
-```
-
-To configure a SMTP server, add the following configuration to your `vars.yml` file as below (adapt to your needs):
-
-```yaml
-# Control if SMTP server is enabled as the email sender
-n8n_email_smtp_enabled: true
-
-# Specify SMTP server hostname
-n8n_environment_variables_email_smtp_host: ""
-
-# Specify SMTP server port
-n8n_environment_variables_email_smtp_port: 587
-
-# Specify SMTP server username
-n8n_environment_variables_email_smtp_username: ""
-
-# Specify SMTP server password
-n8n_environment_variables_email_smtp_password: ""
-
-# Set `true` to enable STARTTLS
-n8n_environment_variables_email_smtp_enable_starttls: ""
-```
-
-See [this section](https://docs.n8n.io/hosting-instance/#installing-and-running) on the official documentation for details about how to configure the mailer for Railgun or Amazon SES.
-
->[!WARNING]
-> Without setting an authentication method such as DKIM, SPF, and DMARC for your hostname, emails are most likely to be quarantined as spam at recipient's mail servers. The worst scenario is that your server's IP address or hostname will be included in the spam list such as the one managed by [Spamhaus](https://www.spamhaus.org/). If you have set up a mail server with the [MASH project's exim-relay Ansible role](https://github.com/mother-of-all-self-hosting/ansible-role-exim-relay), you can enable DKIM signing with it. Refer [its documentation](https://github.com/mother-of-all-self-hosting/ansible-role-exim-relay/blob/main/docs/configuring-exim-relay.md#enable-dkim-support-optional) for details.
-
 ### Extending the configuration
 
 There are some additional things you may wish to configure about the service.

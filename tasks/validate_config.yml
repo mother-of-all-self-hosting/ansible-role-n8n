@@ -20,7 +20,6 @@
     - n8n_container_network
     - n8n_database_hostname
     - n8n_database_password
-    - n8n_environment_variables_jwt_secret
 
 - name: Run if Traefik is enabled
   when: n8n_container_labels_traefik_enabled | bool
