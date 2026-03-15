@@ -25,6 +25,35 @@
         path: "{{ devture_systemd_docker_base_systemd_path }}/{{ n8n_identifier }}.service"
         state: absent
 
+    - name: Ensure n8n support files do not exist
+      ansible.builtin.file:
+        path: "{{ n8n_base_path }}/{{ item }}"
+        state: absent
+      with_items:
+        - env
+        - labels
+
+    - name: Ensure n8n local config path does not exist if empty
+      ansible.builtin.command:
+        cmd: "rmdir {{ n8n_config_path }}"
+      register: n8n_config_path_deletion_result
+      changed_when: n8n_config_path_deletion_result.rc == 0
+      failed_when: false
+
+    - name: Ensure n8n local data path does not exist if empty
+      ansible.builtin.command:
+        cmd: "rmdir {{ n8n_data_path }}"
+      register: n8n_data_path_deletion_result
+      changed_when: n8n_data_path_deletion_result.rc == 0
+      failed_when: false
+
+    - name: Ensure n8n base path does not exist if empty
+      ansible.builtin.command:
+        cmd: "rmdir {{ n8n_base_path }}"
+      register: n8n_base_path_deletion_result
+      changed_when: n8n_base_path_deletion_result.rc == 0
+      failed_when: false
+
     - name: Ensure n8n container network does not exist
       when: n8n_container_network_deletion_enabled
       block:
@@ -44,7 +73,38 @@
           register: n8n_network_deletion_result
           changed_when: n8n_container_network in n8n_network_deletion_result.stdout
 
-    - name: Ensure n8n path does not exist
-      ansible.builtin.file:
-        path: "{{ n8n_base_path }}"
-        state: absent
+- name: Check existence of n8n local config path
+  ansible.builtin.stat:
+    path: "{{ n8n_config_path }}"
+  register: n8n_config_path_stat
+
+# We just want to notify the user. Deleting data is too destructive.
+- name: Notify if n8n local config remains
+  when: n8n_config_path_stat.stat.exists | bool
+  ansible.builtin.set_fact:
+    devture_playbook_runtime_messages_list: |
+      {{
+        devture_playbook_runtime_messages_list | default([])
+        +
+        [
+          "Note: As the local n8n instance has been removed, some old config data remains in `" + n8n_config_path + "`. Feel free to delete it."
+        ]
+      }}
+
+- name: Check existence of n8n local data path
+  ansible.builtin.stat:
+    path: "{{ n8n_data_path }}"
+  register: n8n_data_path_stat
+
+# We just want to notify the user. Deleting data is too destructive.
+- name: Notify if n8n local data remains
+  when: n8n_data_path_stat.stat.exists | bool
+  ansible.builtin.set_fact:
+    devture_playbook_runtime_messages_list: |
+      {{
+        devture_playbook_runtime_messages_list | default([])
+        +
+        [
+          "Note: As the local n8n instance has been removed, some old data remains in `" + n8n_data_path + "`. Feel free to delete it."
+        ]
+      }}
