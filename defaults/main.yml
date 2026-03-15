@@ -63,7 +63,7 @@ n8n_container_network_deletion_enabled: true
 n8n_container_http_host_bind_port: ""
 
 # The port number in the container
-n8n_container_http_port: 3000
+n8n_container_http_port: 5678
 
 # A list of additional container networks that the container would be connected to.
 # The role does not create these networks, so make sure they already exist.
