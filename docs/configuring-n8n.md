@@ -8,6 +8,7 @@ SPDX-FileCopyrightText: 2020-2024 Slavi Pantaleev
 SPDX-FileCopyrightText: 2022 François Darveau
 SPDX-FileCopyrightText: 2022 Julian Foad
 SPDX-FileCopyrightText: 2022 Warren Bailey
+SPDX-FileCopyrightText: 2023 Alejandro AR
 SPDX-FileCopyrightText: 2023 Antonis Christofides
 SPDX-FileCopyrightText: 2023 Felix Stupp
 SPDX-FileCopyrightText: 2023 Julian-Samuel Gebühr
@@ -20,11 +21,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Setting up n8n
 
-This is an [Ansible](https://www.ansible.com/) role which installs [n8n](https://github.com/getn8n/n8n) to run as a [Docker](https://www.docker.com/) container wrapped in a systemd service.
+This is an [Ansible](https://www.ansible.com/) role which installs [n8n](https://github.com/n8n-io/n8n) to run as a [Docker](https://www.docker.com/) container wrapped in a systemd service.
 
-n8n is a feedback portal for feature requests and suggestions.
+n8n is a workflow automation tool for technical people.
 
 See the project's [documentation](https://docs.n8n.io/) to learn what n8n does and why it might be useful to you.
+
+>[!WARNING]
+> n8n is licensed under [Sustainable Use License](https://github.com/n8n-io/n8n/blob/master/LICENSE.md), and therefore non-free software.
 
 ## Prerequisites
 
@@ -87,8 +91,6 @@ There are some additional things you may wish to configure about the service.
 Take a look at:
 
 - [`defaults/main.yml`](../defaults/main.yml) for some variables that you can customize via your `vars.yml` file. You can override settings (even those that don't have dedicated playbook variables) using the `n8n_environment_variables_additional_variables` variable
-
-See [this page](https://docs.n8n.io/hosting-instance/) on the official documentation for a complete list of n8n's config options that you could put in `n8n_environment_variables_additional_variables`.
 
 ## Installing
 
