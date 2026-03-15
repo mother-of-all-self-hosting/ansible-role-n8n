@@ -2,9 +2,9 @@
 galaxy_info:
   author: kinduff
   company: kinduff
-  role_name: fider
+  role_name: n8n
   namespace: mash
-  description: Fider
+  description: n8n
   platforms:
     - name: Debian
       versions:

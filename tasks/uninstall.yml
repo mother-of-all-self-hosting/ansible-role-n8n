@@ -5,46 +5,46 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Check existence of Fider systemd service
+- name: Check existence of n8n systemd service
   ansible.builtin.stat:
-    path: "{{ devture_systemd_docker_base_systemd_path }}/{{ fider_identifier }}.service"
-  register: fider_service_stat
+    path: "{{ devture_systemd_docker_base_systemd_path }}/{{ n8n_identifier }}.service"
+  register: n8n_service_stat
 
-- name: Uninstall Fider systemd services and files
-  when: fider_service_stat.stat.exists | bool
+- name: Uninstall n8n systemd services and files
+  when: n8n_service_stat.stat.exists | bool
   block:
-    - name: Ensure Fider systemd service is stopped
+    - name: Ensure n8n systemd service is stopped
       ansible.builtin.service:
-        name: "{{ fider_identifier }}"
+        name: "{{ n8n_identifier }}"
         state: stopped
         enabled: false
         daemon_reload: true
 
-    - name: Ensure Fider systemd service does not exist
+    - name: Ensure n8n systemd service does not exist
       ansible.builtin.file:
-        path: "{{ devture_systemd_docker_base_systemd_path }}/{{ fider_identifier }}.service"
+        path: "{{ devture_systemd_docker_base_systemd_path }}/{{ n8n_identifier }}.service"
         state: absent
 
-    - name: Ensure Fider container network does not exist
-      when: fider_container_network_deletion_enabled
+    - name: Ensure n8n container network does not exist
+      when: n8n_container_network_deletion_enabled
       block:
-        - name: Ensure Fider container network does not exist via community.docker.docker_network
+        - name: Ensure n8n container network does not exist via community.docker.docker_network
           when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
           community.docker.docker_network:
-            name: "{{ fider_container_network }}"
+            name: "{{ n8n_container_network }}"
             state: absent
-          register: fider_network_deletion_result
+          register: n8n_network_deletion_result
 
-        - name: Ensure Fider container network does not exist via ansible.builtin.command
+        - name: Ensure n8n container network does not exist via ansible.builtin.command
           when: devture_systemd_docker_base_container_network_creation_method == 'command'
           ansible.builtin.command:
             cmd: >-
               {{ devture_systemd_docker_base_host_command_docker }} network rm
-              {{ fider_container_network }}
-          register: fider_network_deletion_result
-          changed_when: fider_container_network in fider_network_deletion_result.stdout
+              {{ n8n_container_network }}
+          register: n8n_network_deletion_result
+          changed_when: n8n_container_network in n8n_network_deletion_result.stdout
 
-    - name: Ensure Fider path does not exist
+    - name: Ensure n8n path does not exist
       ansible.builtin.file:
-        path: "{{ fider_base_path }}"
+        path: "{{ n8n_base_path }}"
         state: absent

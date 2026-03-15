@@ -7,45 +7,45 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Fail if required Fider settings not defined
+- name: Fail if required n8n settings not defined
   ansible.builtin.fail:
     msg: >-
       You need to define a required configuration setting (`{{ item }}`).
   when: "lookup('vars', item, default='') | string | length == 0"
   with_items:
-    - fider_uid
-    - fider_gid
-    - fider_hostname
-    - fider_path_prefix
-    - fider_container_network
-    - fider_database_hostname
-    - fider_database_password
-    - fider_environment_variables_jwt_secret
+    - n8n_uid
+    - n8n_gid
+    - n8n_hostname
+    - n8n_path_prefix
+    - n8n_container_network
+    - n8n_database_hostname
+    - n8n_database_password
+    - n8n_environment_variables_jwt_secret
 
 - name: Run if Traefik is enabled
-  when: fider_container_labels_traefik_enabled | bool
+  when: n8n_container_labels_traefik_enabled | bool
   block:
-    - name: Fail if Traefik settings required for Fider are not defined
+    - name: Fail if Traefik settings required for n8n are not defined
       ansible.builtin.fail:
         msg: >-
           You need to define a required configuration setting (`{{ item }}`).
       when: "lookup('vars', item, default='') | string | length == 0"
       with_items:
-        - fider_container_labels_traefik_hostname
-        - fider_container_labels_traefik_path_prefix
+        - n8n_container_labels_traefik_hostname
+        - n8n_container_labels_traefik_path_prefix
 
-    - name: Fail if fider_container_labels_traefik_path_prefix is different than /
+    - name: Fail if n8n_container_labels_traefik_path_prefix is different than /
       ansible.builtin.fail:
         msg: >-
-          fider_container_labels_traefik_path_prefix (`{{ fider_container_labels_traefik_path_prefix }}`) must be `/`.
-          Fider does not support hosting under a subpath yet.
-      when: "fider_container_labels_traefik_path_prefix != '/'"
+          n8n_container_labels_traefik_path_prefix (`{{ n8n_container_labels_traefik_path_prefix }}`) must be `/`.
+          n8n does not support hosting under a subpath yet.
+      when: "n8n_container_labels_traefik_path_prefix != '/'"
 
     # We ensure it doesn't end with a slash, because we handle both (slash and no-slash).
-    # Knowing that `fider_container_labels_traefik_path_prefix` does not end with a slash
+    # Knowing that `n8n_container_labels_traefik_path_prefix` does not end with a slash
     # ensures we know how to set these routes up without having to do "does it end with a slash" checks elsewhere.
-    - name: Fail if fider_container_labels_traefik_path_prefix ends with a slash
+    - name: Fail if n8n_container_labels_traefik_path_prefix ends with a slash
       ansible.builtin.fail:
         msg: >-
-          fider_container_labels_traefik_path_prefix (`{{ fider_container_labels_traefik_path_prefix }}`) must either be `/` or not end with a slash (e.g. `/fider`).
-      when: "fider_container_labels_traefik_path_prefix != '/' and fider_container_labels_traefik_path_prefix[-1] == '/'"
+          n8n_container_labels_traefik_path_prefix (`{{ n8n_container_labels_traefik_path_prefix }}`) must either be `/` or not end with a slash (e.g. `/n8n`).
+      when: "n8n_container_labels_traefik_path_prefix != '/' and n8n_container_labels_traefik_path_prefix[-1] == '/'"

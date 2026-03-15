@@ -5,24 +5,24 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Perform Fider installation tasks
-  when: fider_enabled | bool
+- name: Perform n8n installation tasks
+  when: n8n_enabled | bool
   tags:
     - setup-all
-    - setup-fider
+    - setup-n8n
     - install-all
-    - install-fider
+    - install-n8n
   block:
-    - name: Validate Fider configuration
+    - name: Validate n8n configuration
       ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
-    - name: Install Fider
+    - name: Install n8n
       ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
 
-- name: Perform Fider uninstallation tasks
-  when: not fider_enabled | bool
+- name: Perform n8n uninstallation tasks
+  when: not n8n_enabled | bool
   tags:
     - setup-all
-    - setup-fider
+    - setup-n8n
   block:
-    - name: Uninstall Fider
+    - name: Uninstall n8n
       ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"
