@@ -29,52 +29,27 @@
     - labels
   register: n8n_support_files_result
 
-- name: Run if self-building of n8n container image is not enabled
-  when: "not n8n_container_image_self_build | bool"
-  block:
-    - name: Ensure n8n container image is pulled via community.docker.docker_image
-      when: devture_systemd_docker_base_container_image_pull_method == 'ansible-module'
-      community.docker.docker_image:
-        name: "{{ n8n_container_image }}"
-        source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
-        force_source: "{{ n8n_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
-        force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else n8n_container_image_force_pull }}"
-      register: n8n_container_image_pull_result
-      retries: "{{ devture_playbook_help_container_retries_count }}"
-      delay: "{{ devture_playbook_help_container_retries_delay }}"
-      until: n8n_container_image_pull_result is not failed
+- name: Ensure n8n container image is pulled via community.docker.docker_image
+  when: devture_systemd_docker_base_container_image_pull_method == 'ansible-module'
+  community.docker.docker_image:
+    name: "{{ n8n_container_image }}"
+    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+    force_source: "{{ n8n_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+    force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else n8n_container_image_force_pull }}"
+  register: n8n_container_image_pull_result
+  retries: "{{ devture_playbook_help_container_retries_count }}"
+  delay: "{{ devture_playbook_help_container_retries_delay }}"
+  until: n8n_container_image_pull_result is not failed
 
-    - name: Ensure n8n container image is pulled via ansible.builtin.command
-      when: devture_systemd_docker_base_container_image_pull_method == 'command'
-      ansible.builtin.command:
-        cmd: "{{ devture_systemd_docker_base_host_command_docker }} pull {{ n8n_container_image }}"
-      register: n8n_container_image_pull_result
-      retries: "{{ devture_playbook_help_container_retries_count }}"
-      delay: "{{ devture_playbook_help_container_retries_delay }}"
-      until: n8n_container_image_pull_result is not failed
-      changed_when: "'Downloaded newer image' in n8n_container_image_pull_result.stdout"
-
-- name: Run if self-building of n8n container image is enabled
-  when: "n8n_container_image_self_build | bool"
-  block:
-    - name: Ensure n8n repository is present on self-build
-      ansible.builtin.git:
-        repo: "{{ n8n_container_image_self_build_repo }}"
-        version: "{{ n8n_container_image_self_build_repo_version }}"
-        dest: "{{ n8n_container_image_self_build_src_files_path }}"
-        force: "yes"
-      register: n8n_git_pull_results
-
-    - name: Ensure n8n container image is built
-      ansible.builtin.shell:
-        chdir: "{{ n8n_container_image_self_build_src_files_path }}"
-        cmd: |
-          {{ devture_systemd_docker_base_host_command_docker }} build \
-          -t "{{ n8n_container_image_self_build_name }}" \
-          -f Dockerfile \
-          .
-      register: n8n_container_image_build_result
-      changed_when: "'Successfully built' in n8n_container_image_build_result.stdout or ('writing image' in n8n_container_image_build_result.stderr and 'CACHED' not in n8n_container_image_build_result.stderr)"
+- name: Ensure n8n container image is pulled via ansible.builtin.command
+  when: devture_systemd_docker_base_container_image_pull_method == 'command'
+  ansible.builtin.command:
+    cmd: "{{ devture_systemd_docker_base_host_command_docker }} pull {{ n8n_container_image }}"
+  register: n8n_container_image_pull_result
+  retries: "{{ devture_playbook_help_container_retries_count }}"
+  delay: "{{ devture_playbook_help_container_retries_delay }}"
+  until: n8n_container_image_pull_result is not failed
+  changed_when: "'Downloaded newer image' in n8n_container_image_pull_result.stdout"
 
 - name: Ensure n8n container network is created via community.docker.docker_network
   when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
@@ -111,5 +86,4 @@
         n8n_support_files_result.changed | default(false)
         or n8n_systemd_service_result.changed | default(false)
         or n8n_container_image_pull_result.changed | default(false)
-        or n8n_container_image_build_result.changed | default(false)
       }}
