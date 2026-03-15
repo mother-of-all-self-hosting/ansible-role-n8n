@@ -1,9 +1,9 @@
 ---
 galaxy_info:
-  author: Suguru Hirahara
-  company: progressiv
+  author: kinduff
+  company: kinduff
   role_name: fider
-  namespace: progressiv
+  namespace: mash
   description: Fider
   platforms:
     - name: Debian
