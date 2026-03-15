@@ -9,15 +9,15 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-# Project source code URL: https://github.com/getn8n/n8n
+# Project source code URL: https://github.com/n8n-io/n8n
 
 n8n_enabled: true
 
 n8n_identifier: n8n
 n8n_base_path: "/{{ n8n_identifier }}"
 
-# renovate: datasource=docker depName=getn8n/n8n
-n8n_version: v0.33.0
+# renovate: datasource=docker depName=docker.n8n.io/n8nio/n8n
+n8n_version: 2.11.4
 
 n8n_uid: ""
 n8n_gid: ""
@@ -35,11 +35,11 @@ n8n_hostname: ""
 # technical limitations.
 n8n_path_prefix: /
 
-n8n_container_image: "{{ n8n_container_image_registry_prefix }}getn8n/n8n:{{ n8n_container_image_tag }}"
+n8n_container_image: "{{ n8n_container_image_registry_prefix }}n8nio/n8n:{{ n8n_container_image_tag }}"
 n8n_container_image_tag: "{{ n8n_version }}"
 n8n_container_image_registry_prefix: "{{ n8n_container_image_registry_prefix_upstream }}"
 n8n_container_image_registry_prefix_upstream: "{{ n8n_container_image_registry_prefix_upstream_default }}"
-n8n_container_image_registry_prefix_upstream_default: docker.io/
+n8n_container_image_registry_prefix_upstream_default: docker.n8n.io/
 n8n_container_image_force_pull: "{{ n8n_container_image.endswith(':latest') }}"
 
 n8n_container_image_self_build: false
