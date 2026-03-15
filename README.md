@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2023 Alejandro AR
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # Docker Ansible n8n Role
 
 This is an [Ansible](https://www.ansible.com) role which installs [n8n](https://n8n.io) to run as a [Docker](https://www.docker.com) container wrapped in a systemd service.
