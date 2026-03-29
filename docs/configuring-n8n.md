@@ -70,19 +70,38 @@ After adjusting the hostname, make sure to adjust your DNS records to point the 
 
 **Note**: hosting n8n under a subpath (by configuring the `n8n_path_prefix` variable) does not seem to be possible due to n8n's technical limitations.
 
-### Set variables for connecting to a Postgres database server
+### Set variables for Postgres database server
 
 To have the n8n instance connect to your Postgres server, add the following configuration to your `vars.yml` file.
 
 ```yaml
-n8n_database_hostname: YOUR_POSTGRES_SERVER_HOSTNAME_HERE
-n8n_database_port: 5432
 n8n_database_username: YOUR_POSTGRES_SERVER_USERNAME_HERE
 n8n_database_password: YOUR_POSTGRES_SERVER_PASSWORD_HERE
 n8n_database_name: YOUR_POSTGRES_SERVER_DATABASE_NAME_HERE
 ```
 
 Make sure to replace values for variables with yours.
+
+### Configuring connection to Postgres server
+
+By default the role is configured to establish connection with the Postgres server via the Unix socket. You can mount the Unix socket by adding the following configuration to your `vars.yml` file:
+
+```yaml
+# Specify the path to the Postgres Unix socket path on the host (bind-mount source)
+n8n_database_socket_path_host: ""
+```
+
+Setting it enables to connect to the Postgres server via Unix socket mounted in the container at `/run-postgres/.s.PGSQL.5432`.
+
+If TCP connection is preferred, connection via the Unix socket can be disabled by adding the following configuration to your `vars.yml` file:
+
+```yaml
+# Disable the connection to Postgres server via a Unix socket
+n8n_database_socket_enabled: false
+
+n8n_database_hostname: YOUR_POSTGRES_SERVER_HOSTNAME_HERE
+n8n_database_port: 5432
+```
 
 ### Extending the configuration
 

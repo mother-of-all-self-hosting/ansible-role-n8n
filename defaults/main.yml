@@ -221,12 +221,35 @@ n8n_container_cleanup_command: |
   echo "Failed to remove stale container {{ n8n_identifier }} after {{ n8n_container_cleanup_timeout_seconds }} attempts" >&2;
   exit 1
 
+########################################################################
+#                                                                      #
+# database                                                             #
+#                                                                      #
+########################################################################
+
 # Specify database configuration
 n8n_database_hostname: ""
 n8n_database_port: 5432
 n8n_database_username: n8n
 n8n_database_password: ""
 n8n_database_name: n8n
+
+# Control if the connection to Postgres is made via a Unix socket
+n8n_database_socket_enabled: true
+
+# Specify the path to the Postgres Unix socket path on the host (bind-mount source)
+n8n_database_socket_path_host: ""
+
+# Specify the path to the Postgres Unix socket path inside the n8n server container
+n8n_database_socket_path_container: /run-postgres
+
+n8n_environment_variables_db_postgresdb_host: "{{ n8n_database_socket_path_container if n8n_database_socket_enabled else n8n_database_hostname }}"
+
+########################################################################
+#                                                                      #
+# /database                                                            #
+#                                                                      #
+########################################################################
 
 # Control if isolation mode is enabled
 n8n_isolation_enabled: true

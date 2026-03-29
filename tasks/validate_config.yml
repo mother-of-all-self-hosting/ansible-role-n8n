@@ -11,15 +11,16 @@
   ansible.builtin.fail:
     msg: >-
       You need to define a required configuration setting (`{{ item }}`).
-  when: "lookup('vars', item, default='') | string | length == 0"
+  when: "item.when | bool and lookup('vars', item.name, default='') | string | length == 0"
   with_items:
-    - n8n_uid
-    - n8n_gid
-    - n8n_hostname
-    - n8n_path_prefix
-    - n8n_container_network
-    - n8n_database_hostname
-    - n8n_database_password
+    - { "name": "n8n_uid", when: true }
+    - { "name": "n8n_gid", when: true }
+    - { "name": "n8n_hostname", when: true }
+    - { "name": "n8n_path_prefix", when: true }
+    - { "name": "n8n_container_network", when: true }
+    - { "name": "n8n_database_socket_path_host", when: "{{ n8n_database_socket_enabled }}" }
+    - { "name": "n8n_database_hostname", when: "{{ not n8n_database_socket_enabled }}" }
+    - { "name": "n8n_database_password", when: true }
 
 - name: Run if Traefik is enabled
   when: n8n_container_labels_traefik_enabled | bool
