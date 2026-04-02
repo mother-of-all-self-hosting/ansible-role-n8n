@@ -70,7 +70,9 @@ After adjusting the hostname, make sure to adjust your DNS records to point the 
 
 **Note**: hosting n8n under a subpath (by configuring the `n8n_path_prefix` variable) does not seem to be possible due to n8n's technical limitations.
 
-### Set variables for Postgres database server
+### Configuring database
+
+#### Set variables for the database server
 
 To have the n8n instance connect to your Postgres server, add the following configuration to your `vars.yml` file.
 
@@ -82,7 +84,7 @@ n8n_database_name: YOUR_POSTGRES_SERVER_DATABASE_NAME_HERE
 
 Make sure to replace values for variables with yours.
 
-### Configuring connection to Postgres server
+#### Configuring connection to the database server (optional)
 
 By default the role is configured to establish connection with the Postgres server via the Unix socket. You can mount the Unix socket by adding the following configuration to your `vars.yml` file:
 
