@@ -240,7 +240,7 @@ n8n_database_socket_enabled: true
 # Specify the path to the Postgres Unix socket path on the host (bind-mount source)
 n8n_database_socket_path_host: ""
 
-# Specify the path to the Postgres Unix socket path inside the n8n server container
+# Specify the path to the Postgres Unix socket path inside the n8n container
 n8n_database_socket_path_container: /run-postgres
 
 n8n_environment_variables_db_postgresdb_host: "{{ n8n_database_socket_path_container if n8n_database_socket_enabled else n8n_database_hostname }}"
