@@ -79,7 +79,7 @@
   register: n8n_config_path_stat
 
 # We just want to notify the user. Deleting data is too destructive.
-- name: Notify if n8n local config remains
+- name: Inject the message about the remaining n8n local config path
   when: n8n_config_path_stat.stat.exists | bool
   ansible.builtin.set_fact:
     devture_playbook_runtime_messages_list: |
@@ -97,7 +97,7 @@
   register: n8n_data_path_stat
 
 # We just want to notify the user. Deleting data is too destructive.
-- name: Notify if n8n local data remains
+- name: Inject the message about the remaining n8n local data path
   when: n8n_data_path_stat.stat.exists | bool
   ansible.builtin.set_fact:
     devture_playbook_runtime_messages_list: |
