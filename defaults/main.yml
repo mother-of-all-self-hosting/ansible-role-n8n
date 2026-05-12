@@ -19,7 +19,7 @@ n8n_data_path: "{{ n8n_base_path }}/data"
 n8n_config_path: "{{ n8n_data_path }}/.n8n"
 
 # renovate: datasource=docker depName=docker.n8n.io/n8nio/n8n
-n8n_version: 2.20.6
+n8n_version: 2.21.0
 
 # The n8n container image uses UID and GID 1000 for the user node internally.
 n8n_uid: "1000"
