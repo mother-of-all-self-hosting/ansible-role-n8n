@@ -89,6 +89,9 @@ n8n_container_labels_traefik_priority: 0
 n8n_container_labels_traefik_entrypoints: web-secure
 n8n_container_labels_traefik_tls: "{{ n8n_container_labels_traefik_entrypoints != 'web' }}"
 n8n_container_labels_traefik_tls_certResolver: default  # noqa var-naming
+n8n_container_labels_traefik_middleware_basic_auth_enabled: false
+# See: https://doc.traefik.io/traefik/reference/routing-configuration/http/middlewares/basicauth/
+n8n_container_labels_traefik_middleware_basic_auth_users: ""
 
 # Controls which additional headers to attach to all HTTP requests.
 # To add your own custom request headers, use `n8n_container_labels_traefik_additional_request_headers_custom`
