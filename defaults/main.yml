@@ -192,6 +192,10 @@ n8n_systemd_wanted_services_list_default: []
 n8n_systemd_wanted_services_list_auto: []
 n8n_systemd_wanted_services_list_custom: []
 
+# Controls `TimeoutSec` value on the n8n systemd service
+# Setting an empty value respects the default one
+n8n_systemd_docker_base_timeout_sec: ""
+
 # Controls how long to wait for the container to stop gracefully before killing it.
 n8n_container_stop_grace_time_seconds: "{{ devture_systemd_docker_base_container_stop_grace_time_seconds }}"
 

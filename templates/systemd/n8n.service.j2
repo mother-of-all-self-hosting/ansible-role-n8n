@@ -62,5 +62,9 @@ Restart=always
 RestartSec=30
 SyslogIdentifier={{ n8n_identifier }}
 
+{% if n8n_systemd_docker_base_timeout_sec != '' %}
+TimeoutSec={{ n8n_systemd_docker_base_timeout_sec }}
+{% endif %}
+
 [Install]
 WantedBy=multi-user.target

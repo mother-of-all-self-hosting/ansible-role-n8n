@@ -41,6 +41,7 @@ provisioner:
         n8n_database_type: postgres
         n8n_environment_variables_n8n_editor_base_url: http://localhost:5678/
         n8n_environment_variables_webhook_url: http://localhost:5678/
+        n8n_systemd_docker_base_timeout_sec: "5m"
 
         # Variables required for n8n to connect to the Postgres database (via Unix socket)
         n8n_database_username: my_database_username
