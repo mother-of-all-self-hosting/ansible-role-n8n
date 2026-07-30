@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 Suguru Hirahara
+# SPDX-FileCopyrightText: 2026 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Verify n8n systemd service
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Wait for n8n service to become active (up to 180s)
+      ansible.builtin.systemd:
+        name: n8n.service
+      register: n8n_service
+      until: n8n_service.status.ActiveState == 'active'
+      retries: 36
+      delay: 5
+
+    - name: Assert n8n service is active
+      ansible.builtin.assert:
+        that: n8n_service.status.ActiveState == 'active'
+        fail_msg: "n8n.service not active ({{ n8n_service.status.ActiveState }})"
+        success_msg: "n8n.service is active"
+
+    - name: Retrieve n8n service log for debugging
+      when: n8n_debug_service_enabled | bool
+      ansible.builtin.command:
+        cmd: journalctl -xeu n8n.service
+      changed_when: false
+
+    - name: Wait for n8n HTTP endpoint to respond (up to 10m)
+      ansible.builtin.uri:
+        url: "http://localhost:5678/"
+        method: GET
+        status_code: [200, 302]
+        follow_redirects: none
+      register: n8n_endpoint
+      until: n8n_endpoint.status in [200, 302]
+      retries: 120
+      delay: 5
+
+    - name: Assert n8n HTTP endpoint responds
+      ansible.builtin.assert:
+        that: n8n_endpoint.status in [200, 302]
+        fail_msg: "n8n did not respond as expected ({{ n8n_endpoint.status | default('no response') }})"
+        success_msg: "n8n responded with {{ n8n_endpoint.status }}"
+
+    - name: Show n8n systemd service status summary
+      ansible.builtin.debug:
+        msg:
+          - "n8n systemd: {{ n8n_service.status.ActiveState }}"
+          - "n8n HTTP: {{ n8n_endpoint.status }}"
