@@ -259,6 +259,10 @@ n8n_isolation_enabled: true
 # Specify the timezone
 n8n_environment_variables_tz: UTC
 
+n8n_environment_variables_n8n_editor_base_url: "{{ n8n_scheme }}://{{ n8n_hostname }}{{ n8n_path_prefix }}"
+
+n8n_environment_variables_webhook_url: "{{ n8n_scheme }}://{{ n8n_hostname }}{{ n8n_path_prefix }}"
+
 n8n_environment_variables_n8n_metrics: false
 
 # Additional environment variables.
