@@ -95,8 +95,8 @@
             - workflow:read
             - workflow:list
             - workflow:update
-            # Without this one, n8n answers the activation request below with
-            # a 403 rather than an error naming the missing scope.
+            # Without this one, n8n answers the publication request below
+            # with a bare 403 rather than an error naming the missing scope.
             - workflow:activate
         status_code: [200]
       register: n8n_api_key_creation
@@ -143,17 +143,21 @@
         status_code: [200]
       register: n8n_workflow_creation
 
-    - name: Activate the workflow through the n8n public API
+    # `/publish` rather than `/activate`: n8n marked `/activate` deprecated on
+    # 2026-07-23 and now answers it with a `Deprecation` header, routing it to
+    # this same handler. Using the endpoint that is not on its way out keeps
+    # these tests working across the version bumps this role takes weekly.
+    - name: Publish the workflow through the n8n public API
       ansible.builtin.uri:
-        url: "{{ n8n_molecule_base_url }}/api/v1/workflows/{{ n8n_workflow_creation.json.id }}/activate"
+        url: "{{ n8n_molecule_base_url }}/api/v1/workflows/{{ n8n_workflow_creation.json.id }}/publish"
         method: POST
         headers:
           X-N8N-API-KEY: "{{ n8n_api_key_creation.json.data.rawApiKey }}"
         status_code: [200]
-      register: n8n_workflow_activation
+      register: n8n_workflow_publication
 
     - name: Assert the workflow is active
       ansible.builtin.assert:
-        that: n8n_workflow_activation.json.active
+        that: n8n_workflow_publication.json.active
         fail_msg: "n8n did not activate the workflow"
         success_msg: "n8n activated the workflow"
