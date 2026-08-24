@@ -32,7 +32,9 @@ See the project's [documentation](https://docs.n8n.io/) to learn what n8n does a
 
 ## Prerequisites
 
-To run a n8n instance it is necessary to prepare a [Postgres](https://www.postgresql.org/) database server.
+By default n8n keeps its workflows, credentials and execution history in an [SQLite](https://www.sqlite.org/) database below the service's data directory, so no other service is required.
+
+For anything beyond a small instance, [n8n recommends](https://docs.n8n.io/hosting/configuration/supported-databases-settings/) a [Postgres](https://www.postgresql.org/) database server instead. See [Configuring the database](#configuring-the-database) below for how to switch to one.
 
 If you are looking for an Ansible role for Postgres, you can check out [ansible-role-postgres](https://github.com/mother-of-all-self-hosting/ansible-role-postgres) maintained by the [Mother-of-All-Self-Hosting (MASH)](https://github.com/mother-of-all-self-hosting) team.
 
@@ -70,19 +72,28 @@ After adjusting the hostname, make sure to adjust your DNS records to point the 
 
 **Note**: hosting n8n under a subpath (by configuring the `n8n_path_prefix` variable) does not seem to be possible due to n8n's technical limitations.
 
-### Configuring database
+### Configuring the database
 
-#### Set variables for the database server
+The role installs n8n with an SQLite database by default, kept in a file below the service's data directory. This requires no other service, and is n8n's own default.
 
-To have the n8n instance connect to your Postgres server, add the following configuration to your `vars.yml` file.
+#### Switching to Postgres
+
+To have the n8n instance store its data in your Postgres server instead, add the following configuration to your `vars.yml` file.
 
 ```yaml
+n8n_database_type: postgres
+
 n8n_database_username: YOUR_POSTGRES_SERVER_USERNAME_HERE
 n8n_database_password: YOUR_POSTGRES_SERVER_PASSWORD_HERE
 n8n_database_name: YOUR_POSTGRES_SERVER_DATABASE_NAME_HERE
 ```
 
 Make sure to replace the placeholders with your own values.
+
+>[!WARNING]
+> Switching an existing instance to Postgres does not carry its data across. n8n starts from an empty Postgres database, so your workflows, credentials and execution history will appear to be gone. The SQLite database is left untouched on the server (at `/n8n/data/.n8n/database.sqlite` by default), so nothing is lost, but moving the data over is up to you — see [n8n's documentation on the subject](https://docs.n8n.io/hosting/configuration/supported-databases-settings/).
+>
+> Until this role learned about `n8n_database_type`, it passed the `n8n_database_*` settings to n8n without also passing `DB_TYPE`, which n8n needs in order to use anything but SQLite. Instances configured for Postgres back then were in fact running on SQLite all along. Should you be in that position, the role now refuses to run until you say which of the two databases you mean to use.
 
 #### Configuring connection to the database server (optional)
 

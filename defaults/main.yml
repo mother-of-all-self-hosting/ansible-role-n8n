@@ -233,7 +233,25 @@ n8n_container_cleanup_command: |
 #                                                                      #
 ########################################################################
 
-# Specify database configuration
+# Specify the database engine that n8n keeps its workflows, credentials and
+# execution history in. Supported values are `sqlite` and `postgres`.
+#
+# `sqlite` stores everything in a file below `n8n_data_path` and requires no
+# other service. It is n8n's own default, and it is what instances installed by
+# this role have always ended up using, because the role never passed `DB_TYPE`
+# to n8n - the `n8n_database_*` settings below reached the container but n8n
+# ignored them.
+#
+# `postgres` is what n8n recommends for anything beyond a small instance.
+# Switching an existing instance over does not carry its data across: n8n starts
+# from an empty Postgres database, and the SQLite one is left untouched on disk.
+#
+# See: https://docs.n8n.io/hosting/configuration/supported-databases-settings/
+n8n_database_type: sqlite
+
+# Specify database configuration.
+#
+# These settings are only consulted when `n8n_database_type` is `postgres`.
 n8n_database_hostname: ""
 n8n_database_port: 5432
 n8n_database_username: n8n

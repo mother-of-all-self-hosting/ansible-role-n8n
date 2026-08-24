@@ -27,9 +27,55 @@
     - { "name": "n8n_hostname", when: true }
     - { "name": "n8n_path_prefix", when: true }
     - { "name": "n8n_container_network", when: true }
-    - { "name": "n8n_database_socket_path_host", when: "{{ n8n_database_socket_enabled }}" }
-    - { "name": "n8n_database_hostname", when: "{{ not n8n_database_socket_enabled }}" }
-    - { "name": "n8n_database_password", when: true }
+    - { "name": "n8n_database_type", when: true }
+
+- name: Fail if n8n_database_type is not supported
+  ansible.builtin.fail:
+    msg: >-
+      n8n_database_type (`{{ n8n_database_type }}`) must be one of: {{ n8n_supported_database_types | join(', ') }}.
+  when: "n8n_database_type not in n8n_supported_database_types"
+  vars:
+    n8n_supported_database_types:
+      - sqlite
+      - postgres
+
+# Until the role learned about `n8n_database_type`, it passed the settings below
+# to n8n without also passing `DB_TYPE`, so n8n ignored them and stored
+# everything in SQLite. Anyone who configured them believed they were running on
+# Postgres and was not. Silently continuing would keep that belief alive, and
+# silently honoring them now would move a working instance onto an empty
+# database, so the choice is put back to the administrator.
+- name: Fail if Postgres settings are configured while n8n_database_type is not postgres
+  ansible.builtin.fail:
+    msg: >-
+      You have configured a Postgres connection setting (`{{ item.name }}`),
+      but n8n_database_type is `{{ n8n_database_type }}`, so n8n will not use Postgres.
+      Earlier versions of this role never passed `DB_TYPE` to n8n, so these settings
+      have had no effect and your n8n data lives in SQLite,
+      at `{{ n8n_data_path }}/.n8n/database.sqlite` on the server.
+      To keep that data where it is, remove the Postgres settings from your configuration.
+      To move to Postgres, set `n8n_database_type: postgres` - n8n will start from an empty
+      Postgres database, and the SQLite file will be left untouched for you to migrate from.
+  when: "n8n_database_type != 'postgres' and lookup('vars', item.name, default='') | string | length > 0"
+  with_items:
+    - { "name": "n8n_database_hostname" }
+    - { "name": "n8n_database_password" }
+    - { "name": "n8n_database_socket_path_host" }
+
+- name: Run if Postgres is used
+  when: n8n_database_type == 'postgres'
+  block:
+    - name: Fail if Postgres settings required for n8n are not defined
+      ansible.builtin.fail:
+        msg: >-
+          You need to define a required configuration setting (`{{ item.name }}`).
+      when: "item.when | bool and lookup('vars', item.name, default='') | string | length == 0"
+      with_items:
+        - { "name": "n8n_database_socket_path_host", when: "{{ n8n_database_socket_enabled }}" }
+        - { "name": "n8n_database_hostname", when: "{{ not n8n_database_socket_enabled }}" }
+        - { "name": "n8n_database_username", when: true }
+        - { "name": "n8n_database_password", when: true }
+        - { "name": "n8n_database_name", when: true }
 
 - name: Run if Traefik is enabled
   when: n8n_container_labels_traefik_enabled | bool
