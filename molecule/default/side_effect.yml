@@ -1,0 +1,159 @@
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+# A fresh n8n serves an owner-setup wizard and answers `200` on `/` and on
+# `/healthz` while nobody has ever configured it. Tests written against that
+# instance pass without n8n being usable, so the scenario sets n8n up first and
+# gives it something real to do: a webhook-triggered workflow, created and
+# activated through n8n's documented public API. verify.yml then triggers the
+# webhook and asserts the execution happened.
+#
+# The setup is done here rather than in converge.yml on purpose: it is a
+# one-time state change that would make converge non-idempotent.
+- name: Set n8n up and give it a workflow to run
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    # n8n answers HTTP before it has finished applying its database migrations,
+    # so the retries sit on the setup request itself rather than on a readiness
+    # probe that would go green too early.
+    - name: Set the n8n instance owner up
+      ansible.builtin.uri:
+        url: "{{ n8n_molecule_base_url }}/rest/owner/setup"
+        method: POST
+        body_format: json
+        body:
+          email: "{{ n8n_molecule_owner_email }}"
+          firstName: "{{ n8n_molecule_owner_first_name }}"
+          lastName: "{{ n8n_molecule_owner_last_name }}"
+          password: "{{ n8n_molecule_owner_password }}"
+        # 400 is what n8n answers once an owner exists ("Instance owner already
+        # setup"), which keeps re-running this playbook harmless. The rest are
+        # the codes an instance still booting answers with.
+        status_code: [200, 400, 500, 502, 503]
+      register: n8n_owner_setup
+      until: n8n_owner_setup.status in [200, 400]
+      retries: 120
+      delay: 5
+
+    - name: Assert the n8n instance owner exists
+      ansible.builtin.assert:
+        that: n8n_owner_setup.status in [200, 400]
+        fail_msg: "Setting the n8n instance owner up failed ({{ n8n_owner_setup.status }})"
+        success_msg: "The n8n instance owner exists"
+
+    # Before the workflow below is activated, nothing is listening on this path.
+    # Recording that here is what lets verify.yml's later `200` mean the
+    # workflow was activated, rather than n8n answering everything.
+    - name: Probe the webhook path before any workflow claims it
+      ansible.builtin.uri:
+        url: "{{ n8n_molecule_base_url }}/webhook/{{ n8n_molecule_webhook_path }}"
+        method: GET
+        status_code: [404]
+      register: n8n_webhook_before
+
+    - name: Assert the webhook path is unregistered before the workflow is activated
+      ansible.builtin.assert:
+        that: n8n_webhook_before.status == 404
+        fail_msg: "n8n served /webhook/{{ n8n_molecule_webhook_path }} before any workflow was activated ({{ n8n_webhook_before.status }})"
+        success_msg: "n8n does not serve the webhook path before a workflow claims it"
+
+    - name: Log in to n8n as the instance owner
+      ansible.builtin.uri:
+        url: "{{ n8n_molecule_base_url }}/rest/login"
+        method: POST
+        body_format: json
+        body:
+          emailOrLdapLoginId: "{{ n8n_molecule_owner_email }}"
+          password: "{{ n8n_molecule_owner_password }}"
+        status_code: [200]
+      register: n8n_login
+
+    # n8n marks its authentication cookie `Secure`, which the tests reach over
+    # plain HTTP, so it is read straight out of the response header and sent
+    # back by hand rather than left to a cookie jar's own policy.
+    - name: Determine the n8n authentication cookie
+      ansible.builtin.set_fact:
+        n8n_auth_cookie: "{{ n8n_login.set_cookie | regex_search('n8n-auth=([^;]+)', '\\1') | first }}"
+
+    - name: Issue an n8n API key for the instance owner
+      ansible.builtin.uri:
+        url: "{{ n8n_molecule_base_url }}/rest/api-keys"
+        method: POST
+        headers:
+          Cookie: "n8n-auth={{ n8n_auth_cookie }}"
+        body_format: json
+        body:
+          label: molecule-side-effect
+          expiresAt: null
+          scopes:
+            - workflow:create
+            - workflow:read
+            - workflow:list
+            - workflow:update
+            # Without this one, n8n answers the activation request below with
+            # a 403 rather than an error naming the missing scope.
+            - workflow:activate
+        status_code: [200]
+      register: n8n_api_key_creation
+
+    - name: Create the webhook-triggered workflow through the n8n public API
+      ansible.builtin.uri:
+        url: "{{ n8n_molecule_base_url }}/api/v1/workflows"
+        method: POST
+        headers:
+          X-N8N-API-KEY: "{{ n8n_api_key_creation.json.data.rawApiKey }}"
+        body_format: json
+        body:
+          name: "{{ n8n_molecule_workflow_name }}"
+          settings:
+            executionOrder: v1
+          nodes:
+            - id: 11111111-1111-4111-8111-111111111111
+              name: Webhook
+              type: n8n-nodes-base.webhook
+              typeVersion: 2
+              position: [0, 0]
+              parameters:
+                httpMethod: GET
+                path: "{{ n8n_molecule_webhook_path }}"
+                # The last node's output becomes the HTTP response, which is
+                # how the marker below travels back out to the caller.
+                responseMode: lastNode
+                options: {}
+            - id: 22222222-2222-4222-8222-222222222222
+              name: Marker
+              type: n8n-nodes-base.set
+              typeVersion: 3.4
+              position: [220, 0]
+              parameters:
+                mode: raw
+                jsonOutput: "{{ {'marker': n8n_molecule_marker} | to_json }}"
+                options: {}
+          connections:
+            Webhook:
+              main:
+                - - node: Marker
+                    type: main
+                    index: 0
+        status_code: [200]
+      register: n8n_workflow_creation
+
+    - name: Activate the workflow through the n8n public API
+      ansible.builtin.uri:
+        url: "{{ n8n_molecule_base_url }}/api/v1/workflows/{{ n8n_workflow_creation.json.id }}/activate"
+        method: POST
+        headers:
+          X-N8N-API-KEY: "{{ n8n_api_key_creation.json.data.rawApiKey }}"
+        status_code: [200]
+      register: n8n_workflow_activation
+
+    - name: Assert the workflow is active
+      ansible.builtin.assert:
+        that: n8n_workflow_activation.json.active
+        fail_msg: "n8n did not activate the workflow"
+        success_msg: "n8n activated the workflow"
