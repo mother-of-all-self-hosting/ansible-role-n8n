@@ -1,5 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "Patch releases are deliberately not automerged here, unlike in most other roles in this fleet.",
+    "n8n applies its own TypeORM migrations from the application process at startup, forward-only, before it serves anything: a fresh 2.36.0 instance applies 208 of them on first boot. Patch releases do ship migrations - 2.35.1 -> 2.35.2 added AddReasonToWorkflowPublicationOutbox - so an automerged patch would rewrite the schema of the database holding the users' workflows and the third-party credentials those workflows authenticate with, unattended and with no way back short of restoring a backup.",
+    "The release cadence makes that worse rather than better: 2.36.0 through 2.36.6 were all published within four days. Automerging patch releases would mean an unattended, schema-touching upgrade of a running automation engine on most days of the week. That cadence is also why the regex manager below is held to opening branches on Mondays.",
+    "Both failure modes are caught by the Molecule run on the pull request, which is exactly the checkpoint that automerging would remove.",
+    "The versioning=semver annotation in defaults/main.yml is what keeps this repository off n8n's flavour-suffixed tags. n8n publishes 2.36.6-amd64, 2.36.6-arm64 and 2.36.6-<commit> alongside the plain 2.36.6, and semver reads each suffix as a prerelease identifier, so Renovate skips them and follows the clean tags only."
+  ],
   "extends": [
     "github>mother-of-all-self-hosting/renovate-config#v1.0.0"
   ],
