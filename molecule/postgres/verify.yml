@@ -53,13 +53,19 @@
 
     # A service systemd calls active is not necessarily serving yet, hence the
     # retries on this first request rather than on the later ones.
+    #
+    # The wait is on the payload rather than the status code, because while n8n
+    # applies its database migrations it answers every route with `200` and the
+    # body `n8n is starting up. Please wait`. A status check would go green
+    # against that, and then read `showSetupOnFirstLoad` off a page that has no
+    # such field.
     - name: Wait for n8n to answer over HTTP
       ansible.builtin.uri:
         url: "{{ n8n_molecule_base_url }}/rest/settings"
         method: GET
-        status_code: [200]
+        status_code: [200, 500, 502, 503]
       register: n8n_public_settings
-      until: n8n_public_settings.status == 200
+      until: n8n_public_settings.json.data.userManagement.showSetupOnFirstLoad is defined
       retries: 120
       delay: 5
 

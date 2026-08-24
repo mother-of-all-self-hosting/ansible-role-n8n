@@ -51,6 +51,14 @@ systemd service is active and that HTTP responds therefore passes against an
 instance that no one could log in to, and against one whose database
 configuration never took effect.
 
+There is a second `200` to get past first. While n8n applies its database
+migrations - 208 of them on a first boot - it answers *every* route, the REST
+API and the webhook paths alike, with `200` and a 31-byte body reading `n8n is
+starting up. Please wait`. Anything that waits on a status code is therefore
+liable to proceed against an instance that is not up, and to have its next
+request answered by that same page. Both playbooks wait for the settings
+payload to parse as n8n's own JSON instead.
+
 So each scenario sets n8n up first, in `side_effect.yml`, by posting the owner
 account to `/rest/owner/setup` - the same endpoint the setup wizard itself uses.
 That is done there rather than in `converge.yml` because it is a one-time state

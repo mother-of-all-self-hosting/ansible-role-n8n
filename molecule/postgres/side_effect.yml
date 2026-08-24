@@ -18,9 +18,23 @@
   gather_facts: false
 
   tasks:
-    # n8n answers HTTP before it has finished applying its database migrations,
-    # so the retries sit on the setup request itself rather than on a readiness
-    # probe that would go green too early.
+    # While n8n applies its database migrations it answers *every* route - the
+    # REST API, the webhook paths, everything - with `200` and a 31-byte body
+    # reading `n8n is starting up. Please wait`. Waiting on a status code alone
+    # would go green against that instance, and the owner-setup request below
+    # would be answered by the same page without an owner ever being created.
+    # Requiring the settings payload to parse as n8n's own JSON is what tells
+    # a migrating instance apart from a running one.
+    - name: Wait for n8n to finish starting up
+      ansible.builtin.uri:
+        url: "{{ n8n_molecule_base_url }}/rest/settings"
+        method: GET
+        status_code: [200, 500, 502, 503]
+      register: n8n_startup
+      until: n8n_startup.json.data.userManagement.showSetupOnFirstLoad is defined
+      retries: 120
+      delay: 5
+
     - name: Set the n8n instance owner up
       ansible.builtin.uri:
         url: "{{ n8n_molecule_base_url }}/rest/owner/setup"
@@ -32,13 +46,15 @@
           lastName: "{{ n8n_molecule_owner_last_name }}"
           password: "{{ n8n_molecule_owner_password }}"
         # 400 is what n8n answers once an owner exists ("Instance owner already
-        # setup"), which keeps re-running this playbook harmless. The rest are
-        # the codes an instance still booting answers with.
-        status_code: [200, 400, 500, 502, 503]
+        # setup"), which keeps re-running this playbook harmless.
+        status_code: [200, 400]
       register: n8n_owner_setup
-      until: n8n_owner_setup.status in [200, 400]
-      retries: 120
-      delay: 5
+
+    - name: Assert n8n answered the owner setup rather than a startup page
+      ansible.builtin.assert:
+        that: n8n_owner_setup.json is defined
+        fail_msg: "n8n answered /rest/owner/setup with something other than JSON - it is not up yet"
+        success_msg: "n8n answered /rest/owner/setup"
 
     - name: Assert the n8n instance owner exists
       ansible.builtin.assert:
