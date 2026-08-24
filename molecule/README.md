@@ -92,6 +92,19 @@ Tests an n8n installation on the database engine the role defaults to, which is
 SQLite, and asserts that the SQLite database was created below the role's data
 path.
 
+### `postgres`
+
+Tests an n8n installation backed by Postgres, connected over a Unix socket.
+
+A scenario named after a database is worth nothing unless it proves that
+database is the one in use. n8n falls back to SQLite whenever `DB_TYPE` does not
+say otherwise, and it does so silently while still answering every request -
+which is how this role came to ship a Postgres configuration that never reached
+Postgres. So this scenario looks for the workflow and its execution in Postgres
+itself, querying it through the Postgres role's own `cli-non-interactive`
+helper, and requires the SQLite database that a fallback would have produced to
+be absent.
+
 ## Running
 
 By default it is configured to run the scenarios on Ubuntu 26.04.
