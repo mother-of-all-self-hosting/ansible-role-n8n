@@ -94,6 +94,12 @@
 
     # Proving a wrong password is rejected first means the acceptance of the
     # right one below cannot be explained by n8n letting everything through.
+    #
+    # n8n rate-limits `/rest/login` to 5 requests per 5 minutes per IP, counting
+    # the successful ones too, and answers `429` past that. The two requests one
+    # run makes are well inside it, but running `molecule verify` against the
+    # same instance several times in a row is not: a `429` here or below means
+    # the limiter, not a broken instance. Wait five minutes and try again.
     - name: Attempt to log in to n8n with a wrong password
       ansible.builtin.uri:
         url: "{{ n8n_molecule_base_url }}/rest/login"
