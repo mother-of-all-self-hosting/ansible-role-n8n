@@ -8,7 +8,7 @@
     "The versioning=semver annotation in defaults/main.yml is what keeps this repository off n8n's flavour-suffixed tags. n8n publishes 2.36.6-amd64, 2.36.6-arm64 and 2.36.6-<commit> alongside the plain 2.36.6, and semver reads each suffix as a prerelease identifier, so Renovate skips them and follows the clean tags only."
   ],
   "extends": [
-    "github>mother-of-all-self-hosting/renovate-config#v1.0.0"
+    "github>mother-of-all-self-hosting/renovate-config#v1.1.0"
   ],
   "regex": {
     "schedule": ["* * * * 1"]
