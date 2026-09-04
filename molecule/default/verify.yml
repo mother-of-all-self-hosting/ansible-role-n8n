@@ -18,18 +18,19 @@
   gather_facts: false
 
   tasks:
-    # Only leaf literals are read from the role's defaults, and into a namespace
-    # of their own, so that the scenario's own values keep winning.
+    # The role is not included in this playbook, so its defaults are not in
+    # scope. Reading defaults/main.yml directly ties the version assertion
+    # below.
     - name: Load the role defaults
       ansible.builtin.include_vars:
-        file: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
-        name: n8n_role_defaults
+        file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
+        name: n8n_defaults
 
     # The scenario may pin the database engine; where it does not, the role's
     # own default is what this scenario is testing.
     - name: Determine which database engine n8n is expected to be running on
       ansible.builtin.set_fact:
-        n8n_molecule_database_type: "{{ n8n_database_type | default(n8n_role_defaults.n8n_database_type) }}"
+        n8n_molecule_database_type: "{{ n8n_database_type | default(n8n_defaults.n8n_database_type) }}"
 
     - name: Wait for the n8n service to become active
       ansible.builtin.systemd:
@@ -157,10 +158,10 @@
       ansible.builtin.assert:
         that:
           - n8n_owner_settings.json.data.versionCli | length > 0
-          - n8n_owner_settings.json.data.versionCli is match(n8n_role_defaults.n8n_version | regex_escape)
+          - n8n_owner_settings.json.data.versionCli is match(n8n_defaults.n8n_version | regex_escape)
         fail_msg: >-
           n8n reports version `{{ n8n_owner_settings.json.data.versionCli }}`,
-          which does not match the configured `{{ n8n_role_defaults.n8n_version }}`
+          which does not match the configured `{{ n8n_defaults.n8n_version }}`
         success_msg: "n8n reports version `{{ n8n_owner_settings.json.data.versionCli }}`"
 
     # A scenario is worth little unless it proves which database n8n ended up
