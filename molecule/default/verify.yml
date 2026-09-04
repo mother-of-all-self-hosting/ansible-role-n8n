@@ -154,15 +154,13 @@
         status_code: [200]
       register: n8n_owner_settings
 
-    - name: Assert the n8n version served matches the configured version
+    - name: Assert the running n8n is the version this role installs
       ansible.builtin.assert:
         that:
           - n8n_owner_settings.json.data.versionCli | length > 0
           - n8n_owner_settings.json.data.versionCli is match(n8n_defaults.n8n_version | regex_escape)
-        fail_msg: >-
-          n8n reports version `{{ n8n_owner_settings.json.data.versionCli }}`,
-          which does not match the configured `{{ n8n_defaults.n8n_version }}`
-        success_msg: "n8n reports version `{{ n8n_owner_settings.json.data.versionCli }}`"
+        fail_msg: "n8n reports {{ n8n_owner_settings.json.data.versionCli | default('none') }}, expected {{ n8n_defaults.n8n_version }}"
+        success_msg: "n8n reports {{ n8n_owner_settings.json.data.versionCli }}"
 
     # A scenario is worth little unless it proves which database n8n ended up
     # on. n8n names the engine it connected to, and it falls back to SQLite
