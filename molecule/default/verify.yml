@@ -32,7 +32,7 @@
       ansible.builtin.set_fact:
         n8n_molecule_database_type: "{{ n8n_database_type | default(n8n_defaults.n8n_database_type) }}"
 
-    - name: Wait for the n8n systemd service to become active
+    - name: Wait for the n8n systemd service to become active (up to 180s)
       ansible.builtin.systemd_service:
         name: "{{ n8n_identifier }}.service"
       register: n8n_service
