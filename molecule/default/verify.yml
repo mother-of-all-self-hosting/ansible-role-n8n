@@ -55,7 +55,7 @@
     - name: Retrieve the n8n systemd service log for debugging
       when: n8n_debug_service_enabled | bool
       ansible.builtin.command:
-        cmd: journalctl -xeu {{ n8n_identifier }}.service
+        cmd: journalctl --no-pager --output=cat --unit={{ n8n_identifier }}.service
       changed_when: false
 
     # A service systemd calls active is not necessarily serving yet, hence the
