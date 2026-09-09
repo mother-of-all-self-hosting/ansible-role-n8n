@@ -26,12 +26,6 @@
         file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
         name: n8n_defaults
 
-    # The scenario may pin the database engine; where it does not, the role's
-    # own default is what this scenario is testing.
-    - name: Determine which database engine n8n is expected to be running on
-      ansible.builtin.set_fact:
-        n8n_molecule_database_type: "{{ n8n_database_type | default(n8n_defaults.n8n_database_type) }}"
-
     - name: Wait for the n8n systemd service to become active (up to 180s)
       ansible.builtin.systemd_service:
         name: "{{ n8n_identifier }}.service"
@@ -167,6 +161,12 @@
           - n8n_owner_settings.json.data.versionCli is match(n8n_defaults.n8n_version | regex_escape)
         fail_msg: "n8n reports {{ n8n_owner_settings.json.data.versionCli | default('none') }}, expected {{ n8n_defaults.n8n_version }}"
         success_msg: "n8n reports {{ n8n_owner_settings.json.data.versionCli }}"
+
+    # The scenario may pin the database engine; where it does not, the role's
+    # own default is what this scenario is testing.
+    - name: Determine which database engine n8n is expected to be running on
+      ansible.builtin.set_fact:
+        n8n_molecule_database_type: "{{ n8n_database_type | default(n8n_defaults.n8n_database_type) }}"
 
     # A scenario is worth little unless it proves which database n8n ended up
     # on. n8n names the engine it connected to, and it falls back to SQLite
