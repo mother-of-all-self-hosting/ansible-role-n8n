@@ -20,350 +20,350 @@
   tasks:
     - name: Verify that n8n works
       block:
-    # The role is not included in this playbook, so its defaults are not in
-    # scope. Reading defaults/main.yml directly ties the version assertion
-    # below.
-    - name: Load the role defaults
-      ansible.builtin.include_vars:
-        file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
-        name: n8n_defaults
+        # The role is not included in this playbook, so its defaults are not in
+        # scope. Reading defaults/main.yml directly ties the version assertion
+        # below.
+        - name: Load the role defaults
+          ansible.builtin.include_vars:
+            file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
+            name: n8n_defaults
 
-    - name: Wait for the n8n systemd service to become active (up to 180s)
-      ansible.builtin.systemd_service:
-        name: n8n.service
-      register: n8n_service
-      until: n8n_service.status.ActiveState == 'active'
-      retries: 36
-      delay: 5
-      # So that giving up is reported by the assertion below rather than as a
-      # wall of systemd unit properties.
-      failed_when: false
+        - name: Wait for the n8n systemd service to become active (up to 180s)
+          ansible.builtin.systemd_service:
+            name: n8n.service
+          register: n8n_service
+          until: n8n_service.status.ActiveState == 'active'
+          retries: 36
+          delay: 5
+          # So that giving up is reported by the assertion below rather than as a
+          # wall of systemd unit properties.
+          failed_when: false
 
-    # `Restart=always` in the systemd unit means that even a container which crashes
-    # and gets restarted reads as active here, so this is a precondition rather than
-    # a result.
-    - name: Assert the n8n systemd service is active
-      ansible.builtin.assert:
-        that: n8n_service.status.ActiveState == 'active'
-        fail_msg: "n8n.service is not active ({{ n8n_service.status.ActiveState }})"
-        success_msg: "n8n.service is active"
+        # `Restart=always` in the systemd unit means that even a container which crashes
+        # and gets restarted reads as active here, so this is a precondition rather than
+        # a result.
+        - name: Assert the n8n systemd service is active
+          ansible.builtin.assert:
+            that: n8n_service.status.ActiveState == 'active'
+            fail_msg: "n8n.service is not active ({{ n8n_service.status.ActiveState }})"
+            success_msg: "n8n.service is active"
 
-    - name: Retrieve the n8n systemd service log for debugging
-      when: n8n_debug_service_enabled | bool
-      ansible.builtin.command:
-        cmd: journalctl --no-pager --output=cat --unit=n8n.service
-      changed_when: false
+        - name: Retrieve the n8n systemd service log for debugging
+          when: n8n_debug_service_enabled | bool
+          ansible.builtin.command:
+            cmd: journalctl --no-pager --output=cat --unit=n8n.service
+          changed_when: false
 
-    # A service systemd calls active is not necessarily serving yet, hence the
-    # retries on this first request rather than on the later ones.
-    #
-    # The wait is on the payload rather than the status code, because while n8n
-    # applies its database migrations it answers every route with `200` and the
-    # body `n8n is starting up. Please wait`. A status check would go green
-    # against that, and then read `showSetupOnFirstLoad` off a page that has no
-    # such field.
-    - name: Wait for n8n to answer over HTTP
-      ansible.builtin.uri:
-        url: "{{ n8n_molecule_base_url }}/rest/settings"
-        method: GET
-        status_code: [200, 500, 502, 503]
-      register: n8n_public_settings
-      until: n8n_public_settings.json.data.userManagement.showSetupOnFirstLoad is defined
-      retries: 120
-      delay: 5
+        # A service systemd calls active is not necessarily serving yet, hence the
+        # retries on this first request rather than on the later ones.
+        #
+        # The wait is on the payload rather than the status code, because while n8n
+        # applies its database migrations it answers every route with `200` and the
+        # body `n8n is starting up. Please wait`. A status check would go green
+        # against that, and then read `showSetupOnFirstLoad` off a page that has no
+        # such field.
+        - name: Wait for n8n to answer over HTTP
+          ansible.builtin.uri:
+            url: "{{ n8n_molecule_base_url }}/rest/settings"
+            method: GET
+            status_code: [200, 500, 502, 503]
+          register: n8n_public_settings
+          until: n8n_public_settings.json.data.userManagement.showSetupOnFirstLoad is defined
+          retries: 120
+          delay: 5
 
-    # This is the assertion a status check cannot make. n8n advertises
-    # `showSetupOnFirstLoad` to its own frontend so that it knows whether to
-    # render the owner-setup wizard: it is `true` on an instance nobody has
-    # configured, and `false` once an owner exists.
-    - name: Assert n8n is set up rather than serving the owner-setup wizard
-      ansible.builtin.assert:
-        that: not n8n_public_settings.json.data.userManagement.showSetupOnFirstLoad
-        fail_msg: "n8n is still serving the owner-setup wizard - no owner exists"
-        success_msg: "n8n is set up and no longer serving the owner-setup wizard"
+        # This is the assertion a status check cannot make. n8n advertises
+        # `showSetupOnFirstLoad` to its own frontend so that it knows whether to
+        # render the owner-setup wizard: it is `true` on an instance nobody has
+        # configured, and `false` once an owner exists.
+        - name: Assert n8n is set up rather than serving the owner-setup wizard
+          ansible.builtin.assert:
+            that: not n8n_public_settings.json.data.userManagement.showSetupOnFirstLoad
+            fail_msg: "n8n is still serving the owner-setup wizard - no owner exists"
+            success_msg: "n8n is set up and no longer serving the owner-setup wizard"
 
-    - name: Attempt to list workflows without authenticating
-      ansible.builtin.uri:
-        url: "{{ n8n_molecule_base_url }}/rest/workflows"
-        method: GET
-        status_code: [401]
-      register: n8n_anonymous_workflows
+        - name: Attempt to list workflows without authenticating
+          ansible.builtin.uri:
+            url: "{{ n8n_molecule_base_url }}/rest/workflows"
+            method: GET
+            status_code: [401]
+          register: n8n_anonymous_workflows
 
-    - name: Assert n8n refuses to list workflows without authentication
-      ansible.builtin.assert:
-        that: n8n_anonymous_workflows.status == 401
-        fail_msg: "n8n listed workflows without authentication ({{ n8n_anonymous_workflows.status }})"
-        success_msg: "n8n refuses to list workflows without authentication"
+        - name: Assert n8n refuses to list workflows without authentication
+          ansible.builtin.assert:
+            that: n8n_anonymous_workflows.status == 401
+            fail_msg: "n8n listed workflows without authentication ({{ n8n_anonymous_workflows.status }})"
+            success_msg: "n8n refuses to list workflows without authentication"
 
-    # Proving a wrong password is rejected first means the acceptance of the
-    # right one below cannot be explained by n8n letting everything through.
-    #
-    # n8n rate-limits `/rest/login` to 5 requests per 5 minutes per IP, counting
-    # the successful ones too, and answers `429` past that. The two requests one
-    # run makes are well inside it, but running `molecule verify` against the
-    # same instance several times in a row is not: a `429` here or below means
-    # the limiter, not a broken instance. Wait five minutes and try again.
-    - name: Attempt to log in to n8n with a wrong password
-      ansible.builtin.uri:
-        url: "{{ n8n_molecule_base_url }}/rest/login"
-        method: POST
-        body_format: json
-        body:
-          emailOrLdapLoginId: "{{ n8n_molecule_owner_email }}"
-          password: "{{ n8n_molecule_owner_password }}-wrong"
-        status_code: [401]
-      register: n8n_bad_login
+        # Proving a wrong password is rejected first means the acceptance of the
+        # right one below cannot be explained by n8n letting everything through.
+        #
+        # n8n rate-limits `/rest/login` to 5 requests per 5 minutes per IP, counting
+        # the successful ones too, and answers `429` past that. The two requests one
+        # run makes are well inside it, but running `molecule verify` against the
+        # same instance several times in a row is not: a `429` here or below means
+        # the limiter, not a broken instance. Wait five minutes and try again.
+        - name: Attempt to log in to n8n with a wrong password
+          ansible.builtin.uri:
+            url: "{{ n8n_molecule_base_url }}/rest/login"
+            method: POST
+            body_format: json
+            body:
+              emailOrLdapLoginId: "{{ n8n_molecule_owner_email }}"
+              password: "{{ n8n_molecule_owner_password }}-wrong"
+            status_code: [401]
+          register: n8n_bad_login
 
-    - name: Assert n8n rejects a wrong password
-      ansible.builtin.assert:
-        that: n8n_bad_login.status == 401
-        fail_msg: "n8n did not reject a wrong password ({{ n8n_bad_login.status }})"
-        success_msg: "n8n rejects a wrong password"
+        - name: Assert n8n rejects a wrong password
+          ansible.builtin.assert:
+            that: n8n_bad_login.status == 401
+            fail_msg: "n8n did not reject a wrong password ({{ n8n_bad_login.status }})"
+            success_msg: "n8n rejects a wrong password"
 
-    - name: Log in to n8n as the instance owner
-      ansible.builtin.uri:
-        url: "{{ n8n_molecule_base_url }}/rest/login"
-        method: POST
-        body_format: json
-        body:
-          emailOrLdapLoginId: "{{ n8n_molecule_owner_email }}"
-          password: "{{ n8n_molecule_owner_password }}"
-        status_code: [200]
-      register: n8n_login
+        - name: Log in to n8n as the instance owner
+          ansible.builtin.uri:
+            url: "{{ n8n_molecule_base_url }}/rest/login"
+            method: POST
+            body_format: json
+            body:
+              emailOrLdapLoginId: "{{ n8n_molecule_owner_email }}"
+              password: "{{ n8n_molecule_owner_password }}"
+            status_code: [200]
+          register: n8n_login
 
-    - name: Assert n8n logged the instance owner in
-      ansible.builtin.assert:
-        that: n8n_login.json.data.email == n8n_molecule_owner_email
-        fail_msg: "n8n logged in as `{{ n8n_login.json.data.email | default('nobody') }}`, expected `{{ n8n_molecule_owner_email }}`"
-        success_msg: "n8n logged the instance owner in"
+        - name: Assert n8n logged the instance owner in
+          ansible.builtin.assert:
+            that: n8n_login.json.data.email == n8n_molecule_owner_email
+            fail_msg: "n8n logged in as `{{ n8n_login.json.data.email | default('nobody') }}`, expected `{{ n8n_molecule_owner_email }}`"
+            success_msg: "n8n logged the instance owner in"
 
-    # n8n marks its authentication cookie `Secure`, which these tests reach over
-    # plain HTTP, so it is read straight out of the response header and sent
-    # back by hand rather than left to a cookie jar's own policy.
-    - name: Determine the n8n authentication cookie
-      ansible.builtin.set_fact:
-        n8n_auth_cookie: "{{ n8n_login.set_cookie | regex_search('n8n-auth=([^;]+)', '\\1') | first }}"
+        # n8n marks its authentication cookie `Secure`, which these tests reach over
+        # plain HTTP, so it is read straight out of the response header and sent
+        # back by hand rather than left to a cookie jar's own policy.
+        - name: Determine the n8n authentication cookie
+          ansible.builtin.set_fact:
+            n8n_auth_cookie: "{{ n8n_login.set_cookie | regex_search('n8n-auth=([^;]+)', '\\1') | first }}"
 
-    # The settings n8n serves anonymously carry neither the version nor the
-    # database engine - both appear only once the request is authenticated, so
-    # the two assertions below are reachable only on an instance that works.
-    - name: Retrieve the settings n8n serves to an authenticated owner
-      ansible.builtin.uri:
-        url: "{{ n8n_molecule_base_url }}/rest/settings"
-        method: GET
-        headers:
-          Cookie: "n8n-auth={{ n8n_auth_cookie }}"
-        status_code: [200]
-      register: n8n_owner_settings
+        # The settings n8n serves anonymously carry neither the version nor the
+        # database engine - both appear only once the request is authenticated, so
+        # the two assertions below are reachable only on an instance that works.
+        - name: Retrieve the settings n8n serves to an authenticated owner
+          ansible.builtin.uri:
+            url: "{{ n8n_molecule_base_url }}/rest/settings"
+            method: GET
+            headers:
+              Cookie: "n8n-auth={{ n8n_auth_cookie }}"
+            status_code: [200]
+          register: n8n_owner_settings
 
-    - name: Assert the n8n version served matches the configured version
-      ansible.builtin.assert:
-        that:
-          - n8n_owner_settings.json.data.versionCli | length > 0
-          - n8n_owner_settings.json.data.versionCli is match(n8n_defaults.n8n_version | regex_escape)
-        fail_msg: >-
-          n8n reports version `{{ n8n_owner_settings.json.data.versionCli }}`,
-          which does not match the configured `{{ n8n_defaults.n8n_version }}`
-        success_msg: "n8n reports version `{{ n8n_owner_settings.json.data.versionCli }}`"
+        - name: Assert the n8n version served matches the configured version
+          ansible.builtin.assert:
+            that:
+              - n8n_owner_settings.json.data.versionCli | length > 0
+              - n8n_owner_settings.json.data.versionCli is match(n8n_defaults.n8n_version | regex_escape)
+            fail_msg: >-
+              n8n reports version `{{ n8n_owner_settings.json.data.versionCli }}`,
+              which does not match the configured `{{ n8n_defaults.n8n_version }}`
+            success_msg: "n8n reports version `{{ n8n_owner_settings.json.data.versionCli }}`"
 
-    # The scenario may pin the database engine; where it does not, the role's
-    # own default is what this scenario is testing.
-    - name: Determine which database engine n8n is expected to be running on
-      ansible.builtin.set_fact:
-        n8n_molecule_database_type: "{{ n8n_database_type | default(n8n_defaults.n8n_database_type) }}"
+        # The scenario may pin the database engine; where it does not, the role's
+        # own default is what this scenario is testing.
+        - name: Determine which database engine n8n is expected to be running on
+          ansible.builtin.set_fact:
+            n8n_molecule_database_type: "{{ n8n_database_type | default(n8n_defaults.n8n_database_type) }}"
 
-    # A scenario is worth little unless it proves which database n8n ended up
-    # on. n8n names the engine it connected to, and it falls back to SQLite
-    # readily, so this is what catches a Postgres configuration that never took.
-    - name: Assert n8n is running on the expected database engine
-      ansible.builtin.assert:
-        that: n8n_owner_settings.json.data.databaseType == n8n_molecule_expected_database_type
-        fail_msg: >-
-          n8n is running on `{{ n8n_owner_settings.json.data.databaseType }}`, expected
-          `{{ n8n_molecule_expected_database_type }}` for n8n_database_type `{{ n8n_molecule_database_type }}`
-        success_msg: "n8n is running on `{{ n8n_owner_settings.json.data.databaseType }}`"
-      vars:
-        # The names n8n gives its engines are not the ones this role uses.
-        n8n_molecule_expected_database_type: "{{ {'sqlite': 'sqlite', 'postgres': 'postgresdb'}[n8n_molecule_database_type] }}"
+        # A scenario is worth little unless it proves which database n8n ended up
+        # on. n8n names the engine it connected to, and it falls back to SQLite
+        # readily, so this is what catches a Postgres configuration that never took.
+        - name: Assert n8n is running on the expected database engine
+          ansible.builtin.assert:
+            that: n8n_owner_settings.json.data.databaseType == n8n_molecule_expected_database_type
+            fail_msg: >-
+              n8n is running on `{{ n8n_owner_settings.json.data.databaseType }}`, expected
+              `{{ n8n_molecule_expected_database_type }}` for n8n_database_type `{{ n8n_molecule_database_type }}`
+            success_msg: "n8n is running on `{{ n8n_owner_settings.json.data.databaseType }}`"
+          vars:
+            # The names n8n gives its engines are not the ones this role uses.
+            n8n_molecule_expected_database_type: "{{ {'sqlite': 'sqlite', 'postgres': 'postgresdb'}[n8n_molecule_database_type] }}"
 
-    - name: Issue an n8n API key for the instance owner
-      ansible.builtin.uri:
-        url: "{{ n8n_molecule_base_url }}/rest/api-keys"
-        method: POST
-        headers:
-          Cookie: "n8n-auth={{ n8n_auth_cookie }}"
-        body_format: json
-        body:
-          label: molecule-verify
-          expiresAt: null
-          scopes:
-            - workflow:read
-            - workflow:list
-            - execution:read
-            - execution:list
-        status_code: [200]
-      register: n8n_api_key_creation
+        - name: Issue an n8n API key for the instance owner
+          ansible.builtin.uri:
+            url: "{{ n8n_molecule_base_url }}/rest/api-keys"
+            method: POST
+            headers:
+              Cookie: "n8n-auth={{ n8n_auth_cookie }}"
+            body_format: json
+            body:
+              label: molecule-verify
+              expiresAt: null
+              scopes:
+                - workflow:read
+                - workflow:list
+                - execution:read
+                - execution:list
+            status_code: [200]
+          register: n8n_api_key_creation
 
-    - name: Attempt to use the n8n public API with an invalid API key
-      ansible.builtin.uri:
-        url: "{{ n8n_molecule_base_url }}/api/v1/workflows"
-        method: GET
-        headers:
-          X-N8N-API-KEY: "{{ n8n_api_key_creation.json.data.rawApiKey }}-invalid"
-        status_code: [401]
-      register: n8n_public_api_bad_key
+        - name: Attempt to use the n8n public API with an invalid API key
+          ansible.builtin.uri:
+            url: "{{ n8n_molecule_base_url }}/api/v1/workflows"
+            method: GET
+            headers:
+              X-N8N-API-KEY: "{{ n8n_api_key_creation.json.data.rawApiKey }}-invalid"
+            status_code: [401]
+          register: n8n_public_api_bad_key
 
-    - name: Assert the n8n public API rejects an invalid API key
-      ansible.builtin.assert:
-        that: n8n_public_api_bad_key.status == 401
-        fail_msg: "The n8n public API accepted an invalid API key ({{ n8n_public_api_bad_key.status }})"
-        success_msg: "The n8n public API rejects an invalid API key"
+        - name: Assert the n8n public API rejects an invalid API key
+          ansible.builtin.assert:
+            that: n8n_public_api_bad_key.status == 401
+            fail_msg: "The n8n public API accepted an invalid API key ({{ n8n_public_api_bad_key.status }})"
+            success_msg: "The n8n public API rejects an invalid API key"
 
-    # Read back through a different API than the one that created it, with a key
-    # that did not exist when it was created.
-    - name: List the workflows through the n8n public API
-      ansible.builtin.uri:
-        url: "{{ n8n_molecule_base_url }}/api/v1/workflows"
-        method: GET
-        headers:
-          X-N8N-API-KEY: "{{ n8n_api_key_creation.json.data.rawApiKey }}"
-        status_code: [200]
-      register: n8n_public_api_workflows
+        # Read back through a different API than the one that created it, with a key
+        # that did not exist when it was created.
+        - name: List the workflows through the n8n public API
+          ansible.builtin.uri:
+            url: "{{ n8n_molecule_base_url }}/api/v1/workflows"
+            method: GET
+            headers:
+              X-N8N-API-KEY: "{{ n8n_api_key_creation.json.data.rawApiKey }}"
+            status_code: [200]
+          register: n8n_public_api_workflows
 
-    - name: Assert the workflow created earlier came back active through the n8n public API
-      ansible.builtin.assert:
-        that:
-          - n8n_molecule_workflow_names == [n8n_molecule_workflow_name]
-          - n8n_molecule_active_workflow_names == [n8n_molecule_workflow_name]
-        fail_msg: >-
-          The n8n public API returned the workflows {{ n8n_molecule_workflow_names }},
-          of which {{ n8n_molecule_active_workflow_names }} are active;
-          expected `{{ n8n_molecule_workflow_name }}` alone, and active
-        success_msg: "The n8n public API returned `{{ n8n_molecule_workflow_name }}`, active"
-      vars:
-        # The workflow list is spelled out in both expressions rather than
-        # shared through a third variable: one `vars:` entry consumed by another
-        # that maps over it is what ansible-lint's jinja rule cannot render.
-        n8n_molecule_workflow_names: >-
-          {{ n8n_public_api_workflows.json.data | map(attribute='name') | list }}
-        n8n_molecule_active_workflow_names: >-
-          {{ n8n_public_api_workflows.json.data | selectattr('active') | map(attribute='name') | list }}
+        - name: Assert the workflow created earlier came back active through the n8n public API
+          ansible.builtin.assert:
+            that:
+              - n8n_molecule_workflow_names == [n8n_molecule_workflow_name]
+              - n8n_molecule_active_workflow_names == [n8n_molecule_workflow_name]
+            fail_msg: >-
+              The n8n public API returned the workflows {{ n8n_molecule_workflow_names }},
+              of which {{ n8n_molecule_active_workflow_names }} are active;
+              expected `{{ n8n_molecule_workflow_name }}` alone, and active
+            success_msg: "The n8n public API returned `{{ n8n_molecule_workflow_name }}`, active"
+          vars:
+            # The workflow list is spelled out in both expressions rather than
+            # shared through a third variable: one `vars:` entry consumed by another
+            # that maps over it is what ansible-lint's jinja rule cannot render.
+            n8n_molecule_workflow_names: >-
+              {{ n8n_public_api_workflows.json.data | map(attribute='name') | list }}
+            n8n_molecule_active_workflow_names: >-
+              {{ n8n_public_api_workflows.json.data | selectattr('active') | map(attribute='name') | list }}
 
-    # The round trip that matters: an HTTP request reaching the webhook that the
-    # workflow registered, n8n running the workflow, and the marker its second
-    # node produces coming back as the response body. side_effect.yml recorded
-    # that this same path answered `404` before the workflow was activated.
-    - name: Trigger the workflow through its webhook
-      ansible.builtin.uri:
-        url: "{{ n8n_molecule_base_url }}/webhook/{{ n8n_molecule_webhook_path }}"
-        method: GET
-        status_code: [200]
-        return_content: true
-      register: n8n_webhook_response
-      until: n8n_webhook_response.status == 200
-      retries: 30
-      delay: 5
+        # The round trip that matters: an HTTP request reaching the webhook that the
+        # workflow registered, n8n running the workflow, and the marker its second
+        # node produces coming back as the response body. side_effect.yml recorded
+        # that this same path answered `404` before the workflow was activated.
+        - name: Trigger the workflow through its webhook
+          ansible.builtin.uri:
+            url: "{{ n8n_molecule_base_url }}/webhook/{{ n8n_molecule_webhook_path }}"
+            method: GET
+            status_code: [200]
+            return_content: true
+          register: n8n_webhook_response
+          until: n8n_webhook_response.status == 200
+          retries: 30
+          delay: 5
 
-    - name: Assert the workflow ran and answered with its marker
-      ansible.builtin.assert:
-        that: n8n_webhook_response.json.marker == n8n_molecule_marker
-        fail_msg: >-
-          The webhook answered `{{ n8n_webhook_response.content }}`,
-          which does not carry the marker `{{ n8n_molecule_marker }}`
-        success_msg: "The webhook ran the workflow and answered with its marker"
+        - name: Assert the workflow ran and answered with its marker
+          ansible.builtin.assert:
+            that: n8n_webhook_response.json.marker == n8n_molecule_marker
+            fail_msg: >-
+              The webhook answered `{{ n8n_webhook_response.content }}`,
+              which does not carry the marker `{{ n8n_molecule_marker }}`
+            success_msg: "The webhook ran the workflow and answered with its marker"
 
-    # That response could in principle have been produced without n8n recording
-    # anything. Its own execution history is the second witness.
-    - name: Read the workflow's execution history through the n8n public API
-      ansible.builtin.uri:
-        url: >-
-          {{ n8n_molecule_base_url }}/api/v1/executions?status=success&workflowId={{
-          (n8n_public_api_workflows.json.data | selectattr('name', 'equalto', n8n_molecule_workflow_name) | first).id }}
-        method: GET
-        headers:
-          X-N8N-API-KEY: "{{ n8n_api_key_creation.json.data.rawApiKey }}"
-        status_code: [200]
-      register: n8n_public_api_executions
+        # That response could in principle have been produced without n8n recording
+        # anything. Its own execution history is the second witness.
+        - name: Read the workflow's execution history through the n8n public API
+          ansible.builtin.uri:
+            url: >-
+              {{ n8n_molecule_base_url }}/api/v1/executions?status=success&workflowId={{
+              (n8n_public_api_workflows.json.data | selectattr('name', 'equalto', n8n_molecule_workflow_name) | first).id }}
+            method: GET
+            headers:
+              X-N8N-API-KEY: "{{ n8n_api_key_creation.json.data.rawApiKey }}"
+            status_code: [200]
+          register: n8n_public_api_executions
 
-    - name: Assert n8n recorded a successful webhook execution of the workflow
-      ansible.builtin.assert:
-        that:
-          - n8n_public_api_executions.json.data | length >= 1
-          - n8n_molecule_execution_modes | unique == ['webhook']
-        fail_msg: >-
-          n8n recorded {{ n8n_public_api_executions.json.data | length }} successful execution(s)
-          in modes {{ n8n_molecule_execution_modes }}, expected at least one, in mode `webhook`
-        success_msg: "n8n recorded a successful webhook execution of the workflow"
-      vars:
-        n8n_molecule_execution_modes: >-
-          {{ n8n_public_api_executions.json.data | map(attribute='mode') | list }}
+        - name: Assert n8n recorded a successful webhook execution of the workflow
+          ansible.builtin.assert:
+            that:
+              - n8n_public_api_executions.json.data | length >= 1
+              - n8n_molecule_execution_modes | unique == ['webhook']
+            fail_msg: >-
+              n8n recorded {{ n8n_public_api_executions.json.data | length }} successful execution(s)
+              in modes {{ n8n_molecule_execution_modes }}, expected at least one, in mode `webhook`
+            success_msg: "n8n recorded a successful webhook execution of the workflow"
+          vars:
+            n8n_molecule_execution_modes: >-
+              {{ n8n_public_api_executions.json.data | map(attribute='mode') | list }}
 
-    # A scenario named after a database is worth nothing unless it proves that
-    # database is the one in use. n8n falls back to SQLite whenever `DB_TYPE`
-    # does not say otherwise, and it does so silently, still answering every
-    # request - which is exactly how this role shipped a Postgres configuration
-    # that never reached Postgres. So the workflow is looked for in Postgres
-    # itself, and the SQLite database a fallback would have left behind is
-    # required to be absent.
-    - name: Check whether n8n fell back to an SQLite database
-      ansible.builtin.stat:
-        path: "{{ n8n_molecule_sqlite_path }}"
-      register: n8n_sqlite_database
+        # A scenario named after a database is worth nothing unless it proves that
+        # database is the one in use. n8n falls back to SQLite whenever `DB_TYPE`
+        # does not say otherwise, and it does so silently, still answering every
+        # request - which is exactly how this role shipped a Postgres configuration
+        # that never reached Postgres. So the workflow is looked for in Postgres
+        # itself, and the SQLite database a fallback would have left behind is
+        # required to be absent.
+        - name: Check whether n8n fell back to an SQLite database
+          ansible.builtin.stat:
+            path: "{{ n8n_molecule_sqlite_path }}"
+          register: n8n_sqlite_database
 
-    - name: Assert n8n did not fall back to SQLite
-      ansible.builtin.assert:
-        that: not n8n_sqlite_database.stat.exists
-        fail_msg: "n8n fell back to SQLite - it created {{ n8n_molecule_sqlite_path }}"
-        success_msg: "n8n did not fall back to SQLite"
+        - name: Assert n8n did not fall back to SQLite
+          ansible.builtin.assert:
+            that: not n8n_sqlite_database.stat.exists
+            fail_msg: "n8n fell back to SQLite - it created {{ n8n_molecule_sqlite_path }}"
+            success_msg: "n8n did not fall back to SQLite"
 
-    # Queried through the Postgres role's own CLI helper, over the same Unix
-    # socket the n8n container is given.
-    - name: List the workflows stored in Postgres
-      ansible.builtin.command:
-        argv:
-          - /postgres/bin/cli-non-interactive
-          - --dbname={{ n8n_database_name }}
-          - --tuples-only
-          - --no-align
-          - --command=select name from workflow_entity order by name
-      register: n8n_backend_workflows
-      changed_when: false
+        # Queried through the Postgres role's own CLI helper, over the same Unix
+        # socket the n8n container is given.
+        - name: List the workflows stored in Postgres
+          ansible.builtin.command:
+            argv:
+              - /postgres/bin/cli-non-interactive
+              - --dbname={{ n8n_database_name }}
+              - --tuples-only
+              - --no-align
+              - --command=select name from workflow_entity order by name
+          register: n8n_backend_workflows
+          changed_when: false
 
-    - name: Assert the workflow is stored in Postgres
-      ansible.builtin.assert:
-        that: n8n_backend_workflows.stdout_lines == [n8n_molecule_workflow_name]
-        fail_msg: >-
-          Postgres holds the workflows {{ n8n_backend_workflows.stdout_lines }},
-          which is not the `{{ n8n_molecule_workflow_name }}` created through the API
-        success_msg: "Postgres holds `{{ n8n_molecule_workflow_name }}`"
+        - name: Assert the workflow is stored in Postgres
+          ansible.builtin.assert:
+            that: n8n_backend_workflows.stdout_lines == [n8n_molecule_workflow_name]
+            fail_msg: >-
+              Postgres holds the workflows {{ n8n_backend_workflows.stdout_lines }},
+              which is not the `{{ n8n_molecule_workflow_name }}` created through the API
+            success_msg: "Postgres holds `{{ n8n_molecule_workflow_name }}`"
 
-    - name: Count the successful webhook executions stored in Postgres
-      ansible.builtin.command:
-        argv:
-          - /postgres/bin/cli-non-interactive
-          - --dbname={{ n8n_database_name }}
-          - --tuples-only
-          - --no-align
-          - --command=select count(*) from execution_entity where status = 'success' and mode = 'webhook'
-      register: n8n_backend_executions
-      changed_when: false
+        - name: Count the successful webhook executions stored in Postgres
+          ansible.builtin.command:
+            argv:
+              - /postgres/bin/cli-non-interactive
+              - --dbname={{ n8n_database_name }}
+              - --tuples-only
+              - --no-align
+              - --command=select count(*) from execution_entity where status = 'success' and mode = 'webhook'
+          register: n8n_backend_executions
+          changed_when: false
 
-    - name: Assert the webhook execution is stored in Postgres
-      ansible.builtin.assert:
-        that: n8n_backend_executions.stdout | trim | int >= 1
-        fail_msg: >-
-          Postgres holds {{ n8n_backend_executions.stdout | trim }} successful webhook execution(s),
-          expected at least one
-        success_msg: "Postgres holds the successful webhook execution"
+        - name: Assert the webhook execution is stored in Postgres
+          ansible.builtin.assert:
+            that: n8n_backend_executions.stdout | trim | int >= 1
+            fail_msg: >-
+              Postgres holds {{ n8n_backend_executions.stdout | trim }} successful webhook execution(s),
+              expected at least one
+            success_msg: "Postgres holds the successful webhook execution"
 
-    - name: Show the n8n verification summary
-      ansible.builtin.debug:
-        msg:
-          - "n8n systemd: {{ n8n_service.status.ActiveState }}"
-          - "n8n version: {{ n8n_owner_settings.json.data.versionCli }}"
-          - "n8n database: {{ n8n_owner_settings.json.data.databaseType }}"
-          - "n8n workflows in Postgres: {{ n8n_backend_workflows.stdout_lines | length }}"
-          - "n8n successful webhook executions in Postgres: {{ n8n_backend_executions.stdout | trim }}"
+        - name: Show the n8n verification summary
+          ansible.builtin.debug:
+            msg:
+              - "n8n systemd: {{ n8n_service.status.ActiveState }}"
+              - "n8n version: {{ n8n_owner_settings.json.data.versionCli }}"
+              - "n8n database: {{ n8n_owner_settings.json.data.databaseType }}"
+              - "n8n workflows in Postgres: {{ n8n_backend_workflows.stdout_lines | length }}"
+              - "n8n successful webhook executions in Postgres: {{ n8n_backend_executions.stdout | trim }}"
 
       rescue:
         # Whatever went wrong, the reason is almost always in the systemd service log.
