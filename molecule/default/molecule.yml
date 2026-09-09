@@ -51,7 +51,6 @@ provisioner:
         n8n_molecule_sqlite_path: /n8n/data/.n8n/database.sqlite
 
         # Variables for n8n
-        n8n_identifier: n8n
         n8n_uid: 1000
         n8n_gid: 1000
         n8n_scheme: http
