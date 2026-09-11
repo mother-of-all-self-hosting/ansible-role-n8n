@@ -17,6 +17,10 @@
   become: true
   gather_facts: false
 
+  vars:
+    n8n_verify_units:
+      - n8n.service
+
   tasks:
     - name: Verify that n8n works
       block:
@@ -28,13 +32,14 @@
             file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
             name: n8n_defaults
 
-        - name: Wait for the n8n systemd service to become active (up to 180s)
+        - name: Wait for the n8n systemd services to become active (up to 180s each)
           ansible.builtin.systemd_service:
-            name: n8n.service
-          register: n8n_service
-          until: n8n_service.status.ActiveState == 'active'
+            name: "{{ item }}"
+          register: n8n_services
+          until: n8n_services.status.ActiveState == 'active'
           retries: 36
           delay: 5
+          loop: "{{ n8n_verify_units }}"
           # So that giving up is reported by the assertion below rather than as a
           # wall of systemd unit properties.
           failed_when: false
@@ -42,17 +47,20 @@
         # `Restart=always` in the systemd unit means that even a container which crashes
         # and gets restarted reads as active here, so this is a precondition rather than
         # a result.
-        - name: Assert the n8n systemd service is active
+        - name: Assert the n8n systemd services are active
           ansible.builtin.assert:
-            that: n8n_service.status.ActiveState == 'active'
-            fail_msg: "n8n.service is not active ({{ n8n_service.status.ActiveState }})"
-            success_msg: "n8n.service is active"
+            that: n8n_services.results | map(attribute='status.ActiveState') | unique | list == ['active']
+            fail_msg: >-
+              Not every service is active:
+              {{ dict(n8n_verify_units | zip(n8n_services.results | map(attribute='status.ActiveState'))) }}
+            success_msg: "Every systemd service is active"
 
-        - name: Retrieve the n8n systemd service log for debugging
+        - name: Retrieve the n8n systemd services log for debugging
           when: n8n_debug_service_enabled | bool
           ansible.builtin.command:
-            cmd: journalctl --no-pager --output=cat --unit=n8n.service
+            cmd: "journalctl --no-pager --output=cat --unit={{ item }}"
           changed_when: false
+          loop: "{{ n8n_verify_units }}"
 
         # A service systemd calls active is not necessarily serving yet, hence the
         # retries on this first request rather than on the later ones.
@@ -315,7 +323,7 @@
         - name: Show the n8n verification summary
           ansible.builtin.debug:
             msg:
-              - "n8n systemd: {{ n8n_service.status.ActiveState }}"
+              - "n8n systemd: {% for unit, state in n8n_verify_units | zip(n8n_services.results | map(attribute='status.ActiveState')) %}{{ unit }} ({{ state }}){% if not loop.last %}, {% endif %}{% endfor %}"
               - "n8n version: {{ n8n_owner_settings.json.data.versionCli }}"
               - "n8n database: {{ n8n_owner_settings.json.data.databaseType }}"
               - "n8n successful webhook executions: {{ n8n_public_api_executions.json.data | length }}"
