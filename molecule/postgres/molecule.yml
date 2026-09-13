@@ -31,6 +31,7 @@ provisioner:
       all:
         # Helper variables
         n8n_debug_service_enabled: false
+        n8n_restarts_check_enabled: true
 
         # Molecule-only variables, shared by side_effect.yml and verify.yml.
         # They are not consumed by the role itself.
