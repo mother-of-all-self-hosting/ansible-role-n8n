@@ -47,7 +47,10 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       {% for arg in n8n_container_extra_arguments %}
       {{ arg }} \
       {% endfor %}
-      {{ n8n_container_image }}
+      {{ n8n_container_image }} \
+      {% for arg in n8n_process_extra_arguments %}
+      {{ arg }} \
+      {% endfor %}
 
 {% for network in n8n_container_additional_networks %}
 ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} network connect {{ network }} {{ n8n_identifier }}
