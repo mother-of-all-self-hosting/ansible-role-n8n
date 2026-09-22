@@ -34,9 +34,10 @@ See the project's [documentation](https://docs.n8n.io/) to learn what n8n does a
 
 To run a n8n instance it is necessary to prepare a database. You can use a [Postgres](https://www.postgresql.org/), or [SQLite](https://www.sqlite.org/).
 
-For anything beyond a small instance, [n8n recommends](https://docs.n8n.io/hosting/configuration/supported-databases-settings/) Postgres. Refer to [Configuring the database](#configuring-the-database) below for how to switch to one.
-
 If you are looking for an Ansible role for Postgres, you can check out [ansible-role-postgres](https://github.com/mother-of-all-self-hosting/ansible-role-postgres) maintained by the [Mother-of-All-Self-Hosting (MASH)](https://github.com/mother-of-all-self-hosting) team.
+
+>[!NOTE]
+> For anything beyond a small instance, [n8n recommends](https://docs.n8n.io/hosting/configuration/supported-databases-settings/) Postgres. Refer to [Configuring the database](#configuring-the-database) below for how to switch to one.
 
 ## Adjusting the playbook configuration
 
