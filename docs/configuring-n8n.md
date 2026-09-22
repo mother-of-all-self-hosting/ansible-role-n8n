@@ -32,7 +32,7 @@ See the project's [documentation](https://docs.n8n.io/) to learn what n8n does a
 
 ## Prerequisites
 
-To run a n8n instance it is necessary to prepare a database. You can use a [Postgres](https://www.postgresql.org/), or [SQLite](https://www.sqlite.org/).
+To run a n8n instance it is necessary to prepare a database. You can use [Postgres](https://www.postgresql.org/) or [SQLite](https://www.sqlite.org/). The SQLite database file will be automatically created by the service if it is enabled.
 
 If you are looking for an Ansible role for Postgres, you can check out [ansible-role-postgres](https://github.com/mother-of-all-self-hosting/ansible-role-postgres) maintained by the [Mother-of-All-Self-Hosting (MASH)](https://github.com/mother-of-all-self-hosting) team.
 
