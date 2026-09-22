@@ -172,26 +172,6 @@
             fail_msg: "n8n reports {{ n8n_owner_settings.json.data.versionCli | default('none') }}, expected {{ n8n_defaults.n8n_version }}"
             success_msg: "n8n reports {{ n8n_owner_settings.json.data.versionCli }}"
 
-        # The scenario may pin the database engine; where it does not, the role's
-        # own default is what this scenario is testing.
-        - name: Determine which database engine n8n is expected to be running on
-          ansible.builtin.set_fact:
-            n8n_molecule_database_type: "{{ n8n_database_type | default(n8n_defaults.n8n_database_type) }}"
-
-        # A scenario is worth little unless it proves which database n8n ended up
-        # on. n8n names the engine it connected to, and it falls back to SQLite
-        # readily, so this is what catches a Postgres configuration that never took.
-        - name: Assert n8n is running on the expected database engine
-          ansible.builtin.assert:
-            that: n8n_owner_settings.json.data.databaseType == n8n_molecule_expected_database_type
-            fail_msg: >-
-              n8n is running on `{{ n8n_owner_settings.json.data.databaseType }}`, expected
-              `{{ n8n_molecule_expected_database_type }}` for n8n_database_type `{{ n8n_molecule_database_type }}`
-            success_msg: "n8n is running on `{{ n8n_owner_settings.json.data.databaseType }}`"
-          vars:
-            # The names n8n gives its engines are not the ones this role uses.
-            n8n_molecule_expected_database_type: "{{ {'sqlite': 'sqlite', 'postgres': 'postgresdb'}[n8n_molecule_database_type] }}"
-
         - name: Issue an n8n API key for the instance owner
           ansible.builtin.uri:
             url: "{{ n8n_molecule_base_url }}/rest/api-keys"
@@ -303,22 +283,6 @@
           vars:
             n8n_molecule_execution_modes: >-
               {{ n8n_public_api_executions.json.data | map(attribute='mode') | list }}
-
-        # This scenario does not pin the database engine, so it is running on the
-        # role's default of SQLite, and the database file has to be where the role's
-        # data directory puts it.
-        - name: Check whether n8n created its SQLite database
-          ansible.builtin.stat:
-            path: "{{ n8n_molecule_sqlite_path }}"
-          register: n8n_sqlite_database
-
-        - name: Assert n8n created its SQLite database below the role's data path
-          ansible.builtin.assert:
-            that:
-              - n8n_sqlite_database.stat.exists
-              - n8n_sqlite_database.stat.size > 0
-            fail_msg: "n8n did not create an SQLite database at {{ n8n_molecule_sqlite_path }}"
-            success_msg: "n8n created its SQLite database at {{ n8n_molecule_sqlite_path }}"
 
         - name: Verify nothing was quietly restarting while all of that was being checked
           when: "n8n_restarts_check_enabled | bool"

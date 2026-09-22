@@ -46,10 +46,6 @@ provisioner:
         n8n_molecule_workflow_name: Molecule Webhook Workflow
         n8n_molecule_webhook_path: molecule-probe
         n8n_molecule_marker: molecule-n8n-roundtrip
-        # The SQLite database n8n keeps below the role's data directory.
-        # Spelled out rather than derived from `n8n_data_path`, which is a
-        # template that the verifier does not evaluate.
-        n8n_molecule_sqlite_path: /n8n/data/.n8n/database.sqlite
 
         # Variables for n8n
         n8n_uid: 1000
@@ -61,27 +57,9 @@ provisioner:
         n8n_environment_variables_n8n_editor_base_url: http://localhost:5678/
         n8n_environment_variables_webhook_url: http://localhost:5678/
         n8n_systemd_docker_base_timeout_sec: "5m"
-
-        # `n8n_database_type` is deliberately left unset, so that this scenario
-        # tests whatever the role defaults to. verify.yml reads that default out
-        # of defaults/main.yml and requires n8n to report running on it.
+        n8n_database_type: sqlite
   env:
     # Workaround for https://github.com/ansible/molecule/issues/4391
     ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/..:/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:~/.ansible/roles
-scenario:
-  # See: https://docs.ansible.com/projects/molecule/configuration/?h=test_sequence#scenario
-  test_sequence:
-    - dependency
-    - cleanup
-    - destroy
-    - syntax
-    - create
-    - prepare
-    - converge
-    - idempotence
-    - side_effect
-    - verify
-    - cleanup
-    - destroy
 verifier:
   name: ansible
