@@ -43,52 +43,20 @@ pip3 install -r ./molecule/requirements.txt
 
 ## What the scenarios verify
 
-n8n is awkward to test honestly. An instance that nobody has ever configured
-still answers on every endpoint a test would naturally reach for: `/` returns
-`200` (serving the owner-setup wizard), `/healthz` returns `200`, and
-`/rest/settings` returns `200` with a reduced payload. A test that checks the
-systemd service is active and that HTTP responds therefore passes against an
-instance that no one could log in to, and against one whose database
-configuration never took effect.
+Each scenario sets n8n up first, in `side_effect.yml`, by posting the owner account to `/rest/owner/setup` - the same endpoint the setup wizard itself uses. That is done there rather than in `converge.yml` because it is a one-time state change that would make converging non-idempotent. n8n answers `400` once an owner exists, which keeps the playbook safe to re-run.
 
-There is a second `200` to get past first. While n8n applies its database
-migrations - 208 of them on a first boot - it answers *every* route, the REST
-API and the webhook paths alike, with `200` and a 31-byte body reading `n8n is
-starting up. Please wait`. Anything that waits on a status code is therefore
-liable to proceed against an instance that is not up, and to have its next
-request answered by that same page. Both playbooks wait for the settings
-payload to parse as n8n's own JSON instead.
+`side_effect.yml` then logs in, issues an API key, and uses n8n's documented public API to create a webhook-triggered workflow and activate it. Before doing so, it records that the webhook path answers `404`, so that the `200` the verifier later gets from it means the workflow was really activated, rather than n8n answering everything.
 
-So each scenario sets n8n up first, in `side_effect.yml`, by posting the owner
-account to `/rest/owner/setup` - the same endpoint the setup wizard itself uses.
-That is done there rather than in `converge.yml` because it is a one-time state
-change that would make converging non-idempotent. n8n answers `400` once an
-owner exists, which keeps the playbook safe to re-run.
+Here is a synopsis of what a successful run proves. Check the scenarios themselves for details about what are exactly checked.
 
-`side_effect.yml` then logs in, issues an API key, and uses n8n's documented
-public API to create a webhook-triggered workflow and activate it. Before doing
-so, it records that the webhook path answers `404`, so that the `200` the
-verifier later gets from it means the workflow was really activated, rather than
-n8n answering everything.
-
-Against the resulting instance, each scenario asserts that:
-
-- the systemd service is active and n8n answers over HTTP
-- n8n is set up rather than serving the owner-setup wizard - it advertises
-  `showSetupOnFirstLoad` to its own frontend, `true` until an owner exists
-- n8n refuses to list workflows without authentication, and rejects a wrong
-  password, before the right one is shown to be accepted
-- the version n8n reports matches `n8n_version` from the role's defaults. n8n
-  serves it only to an authenticated caller, so this assertion is unreachable on
-  an instance that was never set up
-- n8n names the database engine it connected to, and it is the one the scenario
-  configured
-- the n8n public API rejects an invalid API key, and returns the workflow -
-  active - to a valid one issued after that workflow was created
-- an HTTP request to the workflow's webhook runs the workflow and comes back
-  carrying the marker its second node produces
-- n8n's own execution history records that run as a successful execution in
-  `webhook` mode
+- The systemd service is active and n8n answers over HTTP
+- n8n is set up rather than serving the owner-setup wizard - it advertises `showSetupOnFirstLoad` to its own frontend, `true` until an owner exists
+- n8n refuses to list workflows without authentication, and rejects a wrong password, before the right one is shown to be accepted
+- The version n8n reports matches `n8n_version` from the role's defaults. n8n serves it only to an authenticated caller, so this assertion is unreachable on an instance that was never set up
+- n8n names the database engine it connected to, and it is the one the scenario configured
+- The n8n public API rejects an invalid API key, and returns the workflow - active - to a valid one issued after that workflow was created
+- An HTTP request to the workflow's webhook runs the workflow and comes back carrying the marker its second node produces
+- n8n's own execution history records that run as a successful execution in `webhook` mode
 
 ## Scenarios
 
@@ -96,22 +64,11 @@ Currently these testing scenarios are available:
 
 ### `default`
 
-Tests an n8n installation on the database engine the role defaults to, which is
-SQLite, and asserts that the SQLite database was created below the role's data
-path.
+Tests an n8n installation with SQLite and asserts that the database was created below the role's data path.
 
 ### `postgres`
 
-Tests an n8n installation backed by Postgres, connected over a Unix socket.
-
-A scenario named after a database is worth nothing unless it proves that
-database is the one in use. n8n falls back to SQLite whenever `DB_TYPE` does not
-say otherwise, and it does so silently while still answering every request -
-which is how this role came to ship a Postgres configuration that never reached
-Postgres. So this scenario looks for the workflow and its execution in Postgres
-itself, querying it through the Postgres role's own `cli-non-interactive`
-helper, and requires the SQLite database that a fallback would have produced to
-be absent.
+Tests an n8n installation backed by Postgres, connected over a Unix socket. This scenario looks for the workflow, and its execution in Postgres requires the SQLite database that a fallback would have produced to be absent.
 
 ## Running
 
