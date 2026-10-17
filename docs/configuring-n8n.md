@@ -77,7 +77,7 @@ After adjusting the hostname, make sure to adjust your DNS records to point the 
 
 #### Specify database
 
-It is necessary to select database used by n8n from Postgres and SQLite.
+n8n can use either Postgres or SQLite, and you need to choose one.
 
 To use Postgres, add the following configuration to your `vars.yml` file:
 
