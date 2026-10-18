@@ -60,6 +60,52 @@ traefik.http.routers.{{ n8n_identifier }}.tls.certResolver={{ n8n_container_labe
 {% endif %}
 
 traefik.http.services.{{ n8n_identifier }}.loadbalancer.server.port={{ n8n_container_http_port }}
+
+{% if n8n_container_labels_traefik_metrics_enabled %}
+########################################################################
+#                                                                      #
+# Metrics                                                              #
+#                                                                      #
+########################################################################
+
+{% set middlewares = n8n_container_labels_traefik_metrics_middlewares %}
+
+{% if n8n_container_labels_traefik_metrics_middleware_basic_auth_enabled %}
+traefik.http.middlewares.{{ n8n_identifier }}-metrics-basic-auth.basicauth.users={{ n8n_container_labels_traefik_metrics_middleware_basic_auth_users }}
+{% set middlewares = middlewares + [n8n_identifier + '-metrics-basic-auth'] %}
+{% endif %}
+
+traefik.http.middlewares.{{ n8n_identifier }}-metrics-replace-path.replacepath.path=/metrics
+{% set middlewares = middlewares + [n8n_identifier + '-metrics-replace-path'] %}
+
+traefik.http.routers.{{ n8n_identifier }}-metrics.rule={{ n8n_container_labels_traefik_metrics_rule }}
+
+{% if n8n_container_labels_traefik_metrics_priority | int > 0 %}
+traefik.http.routers.{{ n8n_identifier }}-metrics.priority={{ n8n_container_labels_traefik_metrics_priority }}
+{% endif %}
+
+traefik.http.routers.{{ n8n_identifier }}-metrics.service={{ n8n_identifier }}-metrics
+
+{% if middlewares | length > 0 %}
+traefik.http.routers.{{ n8n_identifier }}-metrics.middlewares={{ middlewares | join(',') }}
+{% endif %}
+
+traefik.http.routers.{{ n8n_identifier }}-metrics.entrypoints={{ n8n_container_labels_traefik_metrics_entrypoints }}
+
+traefik.http.routers.{{ n8n_identifier }}-metrics.tls={{ n8n_container_labels_traefik_metrics_tls | to_json }}
+{% if n8n_container_labels_traefik_metrics_tls %}
+traefik.http.routers.{{ n8n_identifier }}-metrics.tls.certResolver={{ n8n_container_labels_traefik_metrics_tls_certResolver }}
+{% endif %}
+
+traefik.http.services.{{ n8n_identifier }}-metrics.loadbalancer.server.port={{ n8n_container_http_port }}
+
+########################################################################
+#                                                                      #
+# /Metrics                                                             #
+#                                                                      #
+########################################################################
+{% endif %}
+
 {% endif %}
 
 {% for arg in n8n_container_labels_additional_labels %}

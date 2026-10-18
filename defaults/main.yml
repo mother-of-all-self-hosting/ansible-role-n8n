@@ -93,6 +93,21 @@ n8n_container_labels_traefik_middleware_basic_auth_enabled: false
 # See: https://doc.traefik.io/traefik/reference/routing-configuration/http/middlewares/basicauth/
 n8n_container_labels_traefik_middleware_basic_auth_users: ""
 
+# Controls if labels are added to expose the Prometheus metrics publicly.
+n8n_container_labels_traefik_metrics_enabled: "{{ n8n_environment_variables_n8n_metrics }}"
+n8n_container_labels_traefik_metrics_hostname: "{{ n8n_hostname }}"
+# The path prefix must either be `/` or not end with a slash (e.g. `/metrics`).
+n8n_container_labels_traefik_metrics_path_prefix: /metrics
+n8n_container_labels_traefik_metrics_rule: "Host(`{{ n8n_container_labels_traefik_metrics_hostname }}`){% if n8n_container_labels_traefik_metrics_path_prefix != '/' %} && PathPrefix(`{{ n8n_container_labels_traefik_metrics_path_prefix }}`){% endif %}"
+n8n_container_labels_traefik_metrics_priority: 0
+n8n_container_labels_traefik_metrics_entrypoints: "{{ n8n_container_labels_traefik_entrypoints }}"
+n8n_container_labels_traefik_metrics_middlewares: []
+n8n_container_labels_traefik_metrics_tls: "{{ n8n_container_labels_traefik_metrics_entrypoints != 'web' }}"
+n8n_container_labels_traefik_metrics_tls_certResolver: "{{ n8n_container_labels_traefik_tls_certResolver }}"  # noqa var-naming
+n8n_container_labels_traefik_metrics_middleware_basic_auth_enabled: false
+# See: https://doc.traefik.io/traefik/reference/routing-configuration/http/middlewares/basicauth/
+n8n_container_labels_traefik_metrics_middleware_basic_auth_users: ""
+
 # Controls which additional headers to attach to all HTTP requests.
 # To add your own custom request headers, use `n8n_container_labels_traefik_additional_request_headers_custom`
 n8n_container_labels_traefik_additional_request_headers: "{{ n8n_container_labels_traefik_additional_request_headers_auto | combine(n8n_container_labels_traefik_additional_request_headers_custom) }}"

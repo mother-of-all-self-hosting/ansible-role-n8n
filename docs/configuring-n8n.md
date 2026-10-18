@@ -110,6 +110,12 @@ n8n_database_hostname: YOUR_POSTGRES_SERVER_HOSTNAME_HERE
 n8n_database_port: 5432
 ```
 
+### Integrating with Prometheus (optional)
+
+n8n can natively expose metrics to Prometheus.
+
+If you are looking for an integration, you can check out the MASH playbook. Refer to [this section of the documentation on the playbook](https://github.com/mother-of-all-self-hosting/mash-playbook/blob/main/docs/services/n8n.md#integrating-with-prometheus-optional) for more information.
+
 ### Extending the configuration
 
 There are some additional things you may wish to configure about the service.
