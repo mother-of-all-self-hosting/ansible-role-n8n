@@ -70,8 +70,8 @@ provisioner:
 
         # Variables required for n8n to connect to the Postgres database (via Unix socket)
         n8n_database_type: postgres
-        n8n_database_username: my_database_username
-        n8n_database_password: my_database_password
+        n8n_database_username: /#@my_database_username?%
+        n8n_database_password: /#@my_database_password?%
         n8n_database_name: n8n
         n8n_database_socket_enabled: true
         n8n_database_socket_path_host: "{{ postgres_run_path }}"
