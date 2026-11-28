@@ -55,7 +55,7 @@
       failed_when: false
 
     - name: Ensure n8n container network does not exist
-      when: n8n_container_network_deletion_enabled
+      when: n8n_container_network_deletion_enabled and n8n_container_network != 'host'
       block:
         - name: Ensure n8n container network does not exist via community.docker.docker_network
           when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
